@@ -20,6 +20,7 @@ export const metadata: Metadata = {
 };
 
 const nav = [
+  { href: "/exterior", label: "Exterior" },
   { href: "/master-plan", label: "Master Plan" },
   { href: "/villas/267", label: "Villas" },
   { href: "/gallery", label: "Gallery" },

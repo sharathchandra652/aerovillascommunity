@@ -14,13 +14,16 @@ export default function Home() {
             muted
             loop
             playsInline
-            className="absolute inset-0 -z-10 h-full w-full object-cover opacity-60"
+            className="absolute inset-0 -z-20 h-full w-full object-cover"
           />
         ) : project.heroImage ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={project.heroImage} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover opacity-60" />
+          <img src={project.heroImage} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover" />
         ) : null}
-        <div className="mx-auto max-w-6xl px-4 py-24 sm:py-32">
+        {(project.heroVideo || project.heroImage) && (
+          <div className="absolute inset-0 -z-10 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
+        )}
+        <div className="mx-auto max-w-6xl px-4 py-28 sm:py-40">
           <p className="text-sm uppercase tracking-widest opacity-80">{project.location}</p>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-6xl">{project.name}</h1>
           <p className="mt-4 max-w-xl text-lg opacity-90">{project.tagline}</p>
@@ -28,8 +31,8 @@ export default function Home() {
             <Link href="/master-plan" className="rounded-lg bg-white px-5 py-3 text-sm font-medium text-brand">
               Explore the master plan
             </Link>
-            <Link href="/villas/267" className="rounded-lg border border-white/60 px-5 py-3 text-sm font-medium">
-              Take a villa tour
+            <Link href="/exterior" className="rounded-lg border border-white/60 px-5 py-3 text-sm font-medium">
+              Walk the streets
             </Link>
           </div>
         </div>
@@ -42,6 +45,34 @@ export default function Home() {
             <div className="text-sm text-muted">{s.label}</div>
           </div>
         ))}
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 py-10">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-semibold">Street views</h2>
+            <p className="mt-1 text-muted">A first look at the community.</p>
+          </div>
+          <Link href="/exterior" className="whitespace-nowrap text-sm font-medium text-brand">
+            View all →
+          </Link>
+        </div>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          {project.exterior.map((s) => (
+            <Link key={s.src} href="/exterior" className="group relative overflow-hidden rounded-xl">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={s.src}
+                alt={s.caption}
+                loading="lazy"
+                className="aspect-video w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+              <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 text-sm text-white">
+                {s.caption}
+              </span>
+            </Link>
+          ))}
+        </div>
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-10">

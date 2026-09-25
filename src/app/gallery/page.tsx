@@ -5,6 +5,7 @@ import { project } from "@/data/project";
 export const metadata: Metadata = { title: `Gallery — ${project.name}` };
 
 export default function GalleryPage() {
+  const images = [...project.exterior, ...project.gallery];
   return (
     <div className="mx-auto max-w-6xl space-y-10 px-4 py-10">
       <h1 className="text-3xl font-semibold">Gallery</h1>
@@ -36,9 +37,9 @@ export default function GalleryPage() {
 
       <section>
         <h2 className="mb-3 text-xl font-semibold">Images</h2>
-        {project.gallery.length ? (
+        {images.length ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {project.gallery.map((g) => (
+            {images.map((g) => (
               <figure key={g.src}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={g.src} alt={g.caption} className="aspect-[4/3] w-full rounded-xl object-cover" />
