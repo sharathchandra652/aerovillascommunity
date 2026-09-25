@@ -4,94 +4,221 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { Sky } from "three/addons/objects/Sky.js";
 import { getVillaType, project, whatsappLink } from "@/data/project";
 import { MASTER_PLAN_VIEWBOX, plots, type Plot, type PlotStatus } from "@/data/plots";
 
-// 3D community view: the aerial master layout as the ground, with every villa
-// from the master plan raised as a building. Image pixels map 1:1 to world units
-// (x → X, y → Z), centred on the origin.
+// 3D community view and guided "Digi Tour".
+//
+// The aerial master layout is the ground. Every villa from the master plan is
+// placed as a 3D villa (body with the real facade on its street side, roof
+// overhang, roof garden) facing its street, with trees along the streets.
+// Image pixels map 1:1 to world units (x → X, y → Z), centred on the origin.
 
-const VILLA_HEIGHT = 30;
-// Front elevation cropped from the 267 villa render, used on every villa wall
+const H = 27; // villa wall height
 const FACADE_IMAGE = "/media/villas/facade-267.jpg";
-const { width: W, height: H } = MASTER_PLAN_VIEWBOX;
-const toWorld = (x: number, y: number) => ({ x: x - W / 2, z: y - H / 2 });
+const { width: MAP_W, height: MAP_H } = MASTER_PLAN_VIEWBOX;
+const toWorld = (x: number, y: number) => ({ x: x - MAP_W / 2, z: y - MAP_H / 2 });
+const DWELL_MS = 6500;
 
 // Landmarks on the aerial render (image pixel coordinates)
 const landmarks = [
-  { label: "Clubhouse", x: 815, y: 440 },
-  { label: "Swimming pool", x: 885, y: 432 },
-  { label: "Sports courts", x: 670, y: 575 },
-  { label: "Children's park", x: 200, y: 565 },
-  { label: "Landscaped park", x: 1060, y: 448 },
-  { label: "Main entrance", x: 115, y: 528 },
+  { label: "Clubhouse", x: 815, y: 440, h: 50 },
+  { label: "Swimming pool", x: 885, y: 432, h: 16 },
+  { label: "Sports courts", x: 670, y: 575, h: 16 },
+  { label: "Children's park", x: 200, y: 565, h: 16 },
+  { label: "Landscaped park", x: 1060, y: 448, h: 16 },
+  { label: "Main entrance", x: 115, y: 528, h: 16 },
 ];
 
-// Non-villa buildings raised in 3D (image pixel footprint)
-const buildings = [{ label: "Clubhouse", x0: 765, y0: 400, x1: 870, y1: 495, height: 44 }];
-
-const statusColor: Record<PlotStatus, string> = {
-  available: "#2e8b57",
-  booked: "#d99a2b",
-  sold: "#b54a4a",
+// Guided tour: camera and target in image pixels, plus height
+type Stop = {
+  title: string;
+  text: string;
+  camera: [number, number, number];
+  target: [number, number, number];
+  scene?: string; // exterior walkthrough scene with a render of this spot
+  finale?: boolean;
 };
-const statusLabel: Record<PlotStatus, string> = { available: "Available", booked: "Booked", sold: "Sold" };
+const tourStops: Stop[] = [
+  {
+    title: `Welcome to ${project.name}`,
+    text: "A gated villa community set among open green spaces. Let's take a look around.",
+    camera: [620, 1500, 760],
+    target: [1000, 560, 0],
+  },
+  {
+    title: "Grand Entrance",
+    text: "The gated entrance opens straight onto the tree-lined main avenue.",
+    camera: [30, 610, 80],
+    target: [330, 515, 5],
+  },
+  {
+    title: "Main Avenue",
+    text: "The central avenue connects every villa street, the clubhouse and the play areas.",
+    camera: [520, 610, 85],
+    target: [960, 512, 0],
+    scene: "main-avenue",
+  },
+  {
+    title: "Clubhouse & Pool",
+    text: "The clubhouse with its swimming pool and landscaped deck, at the heart of the community.",
+    camera: [690, 600, 140],
+    target: [840, 445, 15],
+  },
+  {
+    title: "Sports & Play",
+    text: "Sports courts and a children's play area, a short walk from every home.",
+    camera: [540, 700, 95],
+    target: [670, 575, 0],
+  },
+  {
+    title: "Villa Streets",
+    text: "Tree-lined streets with villas on both sides, each with its own car porch and garden.",
+    camera: [1148, 1030, 75],
+    target: [1148, 660, 8],
+    scene: "villa-avenue",
+  },
+  {
+    title: "North-East Villas",
+    text: "A quieter cluster of villas facing open greenery along the eastern edge.",
+    camera: [1620, 250, 140],
+    target: [1340, 380, 0],
+  },
+  {
+    title: "Landscaped Park",
+    text: "Lawns and walking trails beside the clubhouse for evening strolls.",
+    camera: [960, 610, 95],
+    target: [1060, 450, 0],
+  },
+  {
+    title: "Find your villa",
+    text: "Tap any villa to see its details, or explore the master plan and book a site visit.",
+    camera: [1000, 1450, 900],
+    target: [1000, 560, 0],
+    finale: true,
+  },
+];
 
+const statusColor: Record<PlotStatus, string> = { available: "#2e8b57", booked: "#d99a2b", sold: "#b54a4a" };
+const statusLabel: Record<PlotStatus, string> = { available: "Available", booked: "Booked", sold: "Sold" };
 const HOME_CAMERA = new THREE.Vector3(-80, 620, 760);
 
-// Fallback villa facade drawn on a canvas (three floors with glass, a grey stone
-// panel and wood slats), shown until the real facade photo has loaded.
+type Pose = { plot: Plot; x: number; z: number; width: number; depth: number; rot: number; nx: number; nz: number };
+
+// Work out each villa's footprint, which way its street is, and its rotation.
+function computePoses(): Pose[] {
+  const raw = plots.map((plot) => {
+    const pts = plot.points.split(" ").map((s) => s.split(",").map(Number));
+    const [p0, p1, , p3] = pts;
+    const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
+    const cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+    const across = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+    const along = Math.hypot(p3[0] - p0[0], p3[1] - p0[1]);
+    const dx = (p3[0] - p0[0]) / along;
+    const dy = (p3[1] - p0[1]) / along;
+    return { plot, cx, cy, across, along, dx, dy };
+  });
+
+  return raw.map((r) => {
+    // nearest villa to the left / right in the same row
+    let left = Infinity;
+    let right = Infinity;
+    for (const o of raw) {
+      if (o === r || Math.abs(o.cy - r.cy) > r.along * 0.6) continue;
+      const d = r.cx - o.cx;
+      if (d > 0) left = Math.min(left, d);
+      else right = Math.min(right, -d);
+    }
+    // Back-to-back partner on one side → street on the other. Otherwise face the
+    // side with villas across the street.
+    const pair = r.across * 1.5;
+    const face = left < pair ? 1 : right < pair ? -1 : right <= left ? 1 : -1;
+    const nx = face > 0 ? r.dy : -r.dy;
+    const nz = face > 0 ? -r.dx : r.dx;
+    const w = toWorld(r.cx, r.cy);
+    return {
+      plot: r.plot,
+      x: w.x,
+      z: w.z,
+      width: r.along - 1.5,
+      depth: r.across - 1,
+      rot: Math.atan2(nx, nz),
+      nx,
+      nz,
+    };
+  });
+}
+
+// Fallback facade drawn on a canvas, shown until the facade photo has loaded.
 function makeFacadeTexture() {
   const c = document.createElement("canvas");
   c.width = 256;
-  c.height = 192;
+  c.height = 256;
   const g = c.getContext("2d")!;
   const floorH = c.height / 3;
-
   g.fillStyle = "#f2eee7";
   g.fillRect(0, 0, c.width, c.height);
-
-  // grey stone panel and wood slats
   g.fillStyle = "#8e908c";
-  g.fillRect(150, 0, 60, c.height);
+  g.fillRect(40, floorH, 90, floorH);
   g.fillStyle = "#a9743f";
-  for (let x = 214; x < 246; x += 6) g.fillRect(x, 8, 3, c.height - 8);
-
+  for (let x = 8; x < 36; x += 6) g.fillRect(x, 8, 3, c.height * 0.66);
   for (let f = 0; f < 3; f++) {
-    const top = f * floorH;
-    // glass with a sky reflection
-    const glass = g.createLinearGradient(0, top + 10, 0, top + floorH - 8);
-    glass.addColorStop(0, "#6f8799");
-    glass.addColorStop(1, "#2c3a44");
-    g.fillStyle = glass;
-    g.fillRect(14, top + 12, 118, floorH - 22);
-    // mullions
-    g.fillStyle = "#1f2529";
-    for (const x of [14, 53, 92, 131]) g.fillRect(x, top + 12, 2, floorH - 22);
-    // slab / balcony line
-    g.fillStyle = "#d8d2c7";
-    g.fillRect(0, top + floorH - 6, c.width, 6);
-    // planter greenery on the upper floors
-    if (f < 2) {
-      g.fillStyle = "#5f7d3a";
-      g.fillRect(14, top + floorH - 12, 118, 6);
-    }
+    g.fillStyle = "#3a4a55";
+    g.fillRect(140, f * floorH + 14, 100, floorH - 26);
   }
-  // parapet band
-  g.fillStyle = "#e6e1d8";
-  g.fillRect(0, 0, c.width, 6);
-
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
   return tex;
 }
 
-function parsePoints(points: string) {
-  return points.split(" ").map((p) => {
-    const [x, y] = p.split(",").map(Number);
-    return toWorld(x, y);
-  });
+// Villa side / back wall: plain render with a slim window per floor and a stone strip.
+function makeSideTexture() {
+  const c = document.createElement("canvas");
+  c.width = 256;
+  c.height = 256;
+  const g = c.getContext("2d")!;
+  const floorH = c.height / 3;
+  g.fillStyle = "#eeeae3";
+  g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = "#9a978f";
+  g.fillRect(0, floorH, 46, floorH * 2);
+  for (let f = 0; f < 3; f++) {
+    const top = f * floorH;
+    g.fillStyle = "#34424c";
+    g.fillRect(150, top + 18, 56, floorH - 34);
+    g.fillStyle = "#d9d3c8";
+    g.fillRect(0, top + floorH - 5, c.width, 5);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// Clubhouse walls: two floors of glazing with white frames.
+function makeClubTexture() {
+  const c = document.createElement("canvas");
+  c.width = 512;
+  c.height = 256;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#f0efea";
+  g.fillRect(0, 0, c.width, c.height);
+  for (let f = 0; f < 2; f++) {
+    const top = 30 + f * 110;
+    const glass = g.createLinearGradient(0, top, 0, top + 80);
+    glass.addColorStop(0, "#7f98a8");
+    glass.addColorStop(1, "#2f3f4a");
+    g.fillStyle = glass;
+    g.fillRect(24, top, c.width - 48, 80);
+    g.fillStyle = "#f0efea";
+    for (let x = 24; x < c.width - 24; x += 58) g.fillRect(x, top, 4, 80);
+  }
+  g.fillStyle = "#a57649";
+  g.fillRect(0, 0, c.width, 14);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
 
 export default function Community3D() {
@@ -102,16 +229,25 @@ export default function Community3D() {
     setAutoRotate: (on: boolean) => void;
     setAvailability: (on: boolean) => void;
     select: (id: string | null) => void;
+    startTour: () => void;
+    exitTour: () => void;
+    goStop: (i: number) => void;
+    setPlaying: (on: boolean) => void;
   } | null>(null);
 
   const [loaded, setLoaded] = useState(false);
+  const [intro, setIntro] = useState(true);
   const [autoRotate, setAutoRotate] = useState(true);
   const [availability, setAvailability] = useState(false);
   const [selected, setSelected] = useState<Plot | null>(null);
+  const [tourIndex, setTourIndex] = useState<number | null>(null);
+  const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
     const container = mount.current!;
     const labelLayer = labelsRef.current!;
+    const disposables: { dispose: () => void }[] = [];
+    const track = <T extends { dispose: () => void }>(o: T) => (disposables.push(o), o);
 
     // Renderer / scene / camera
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -120,153 +256,202 @@ export default function Community3D() {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 0.9;
     container.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    const sky = document.createElement("canvas");
-    sky.width = 2;
-    sky.height = 256;
-    const g = sky.getContext("2d")!;
-    const grad = g.createLinearGradient(0, 0, 0, 256);
-    grad.addColorStop(0, "#3f6fb0");
-    grad.addColorStop(0.6, "#9cc3e6");
-    grad.addColorStop(1, "#dfe9ef");
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 2, 256);
-    const skyTex = new THREE.CanvasTexture(sky);
-    skyTex.colorSpace = THREE.SRGBColorSpace;
-    scene.background = skyTex;
-    scene.fog = new THREE.Fog("#cfdde6", 900, 2600);
+    const pmrem = track(new THREE.PMREMGenerator(renderer));
+    scene.environment = track(pmrem.fromScene(new RoomEnvironment(), 0.04).texture);
+    scene.environmentIntensity = 0.45;
+    scene.fog = new THREE.Fog("#c9d6df", 1000, 2600);
 
-    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 5, 8000);
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 2, 20000);
     camera.position.copy(HOME_CAMERA);
+
+    // Physical sky with sun
+    const sunDir = new THREE.Vector3().setFromSphericalCoords(1, THREE.MathUtils.degToRad(58), THREE.MathUtils.degToRad(-140));
+    const sky = new Sky();
+    sky.scale.setScalar(12000);
+    const su = sky.material.uniforms;
+    su.turbidity.value = 5;
+    su.rayleigh.value = 1.4;
+    su.mieCoefficient.value = 0.004;
+    su.mieDirectionalG.value = 0.8;
+    su.sunPosition.value.copy(sunDir);
+    scene.add(sky);
+    track(sky.geometry);
+    track(sky.material);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.maxPolarAngle = THREE.MathUtils.degToRad(80);
-    controls.minDistance = 120;
+    controls.maxPolarAngle = THREE.MathUtils.degToRad(84);
+    controls.minDistance = 40;
     controls.maxDistance = 1800;
     controls.autoRotate = true;
     controls.autoRotateSpeed = 0.35;
-    controls.target.set(0, 0, 0);
-    controls.addEventListener("start", () => {
-      controls.autoRotate = false;
-      setAutoRotate(false);
-    });
 
     // Lights
-    scene.add(new THREE.HemisphereLight("#dcecff", "#4b5e34", 1.1));
-    const sun = new THREE.DirectionalLight("#fff4e0", 2.2);
-    sun.position.set(-700, 900, 500);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
-    Object.assign(sun.shadow.camera, { left: -1100, right: 1100, top: 700, bottom: -700, near: 100, far: 2500 });
-    sun.shadow.bias = -0.0005;
-    scene.add(sun);
+    scene.add(new THREE.HemisphereLight("#dcecff", "#55663a", 0.9));
+    const sunLight = new THREE.DirectionalLight("#fff1dc", 2.6);
+    sunLight.position.copy(sunDir).multiplyScalar(1400);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    Object.assign(sunLight.shadow.camera, { left: -1100, right: 1100, top: 800, bottom: -800, near: 100, far: 3200 });
+    sunLight.shadow.bias = -0.0004;
+    sunLight.shadow.normalBias = 0.6;
+    scene.add(sunLight);
 
-    // Ground: surrounding grass + the aerial layout
-    const grass = new THREE.Mesh(
-      new THREE.PlaneGeometry(12000, 12000),
-      new THREE.MeshLambertMaterial({ color: "#5d7a3e" }),
-    );
+    // Ground: surrounding fields + the aerial layout
+    const grass = new THREE.Mesh(track(new THREE.PlaneGeometry(14000, 14000)), track(new THREE.MeshLambertMaterial({ color: "#53592e" })));
     grass.rotation.x = -Math.PI / 2;
     grass.position.y = -0.6;
     grass.receiveShadow = true;
     scene.add(grass);
 
-    const groundMat = new THREE.MeshLambertMaterial({ color: "#ffffff" });
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(W, H), groundMat);
+    const groundMat = track(new THREE.MeshLambertMaterial({ color: "#ffffff" }));
+    const ground = new THREE.Mesh(track(new THREE.PlaneGeometry(MAP_W, MAP_H)), groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     scene.add(ground);
     new THREE.TextureLoader().load(project.layoutImage, (tex) => {
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-      groundMat.map = tex;
+      groundMat.map = track(tex);
       groundMat.needsUpdate = true;
       setLoaded(true);
     });
 
-    // Villas — walls use a facade texture modelled on the renders
-    const facade = makeFacadeTexture();
-    const wallMat = new THREE.MeshStandardMaterial({ map: facade, roughness: 0.8 });
-    const roofNeutral = new THREE.MeshStandardMaterial({ color: "#c9c6bf", roughness: 0.9 });
-    const roofStatus = Object.fromEntries(
-      (Object.keys(statusColor) as PlotStatus[]).map((s) => [
-        s,
-        new THREE.MeshStandardMaterial({ color: statusColor[s], roughness: 0.7 }),
-      ]),
-    ) as Record<PlotStatus, THREE.MeshStandardMaterial>;
-    const selWall = new THREE.MeshStandardMaterial({
-      map: facade,
-      emissive: "#c8952e",
-      emissiveIntensity: 0.35,
-      roughness: 0.8,
+    // ---- Villas (instanced: one draw call per part)
+    const poses = computePoses();
+    const N = poses.length;
+    const unitBox = track(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0));
+    const facadeMat = track(new THREE.MeshStandardMaterial({ map: track(makeFacadeTexture()), roughness: 0.75 }));
+    const wallMat = track(new THREE.MeshStandardMaterial({ map: track(makeSideTexture()), roughness: 0.85 }));
+    const roofMat = track(new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.9 }));
+    const overhangMat = track(new THREE.MeshStandardMaterial({ color: "#6b4a30", roughness: 0.6 }));
+    const gardenMat = track(new THREE.MeshStandardMaterial({ color: "#58743a", roughness: 1 }));
+
+    // BoxGeometry face order: +x, -x, +y, -y, +z (street side), -z
+    const body = new THREE.InstancedMesh(unitBox, [wallMat, wallMat, wallMat, wallMat, facadeMat, wallMat], N);
+    const roofCap = new THREE.InstancedMesh(unitBox, roofMat, N);
+    const overhang = new THREE.InstancedMesh(unitBox, overhangMat, N);
+    const garden = new THREE.InstancedMesh(unitBox, gardenMat, N);
+    for (const m of [body, roofCap, overhang, garden]) {
+      m.castShadow = true;
+      m.receiveShadow = true;
+      scene.add(m);
+    }
+
+    const m4 = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const vPos = new THREE.Vector3();
+    const vScale = new THREE.Vector3();
+    const UP = new THREE.Vector3(0, 1, 0);
+    function place(mesh: THREE.InstancedMesh, i: number, p: Pose, lx: number, ly: number, lz: number, sx: number, sy: number, sz: number) {
+      q.setFromAxisAngle(UP, p.rot);
+      vPos.set(lx, ly, lz).applyQuaternion(q);
+      vPos.x += p.x;
+      vPos.z += p.z;
+      mesh.setMatrixAt(i, m4.compose(vPos, q, vScale.set(sx, sy, sz)));
+    }
+    const white = new THREE.Color("#ffffff");
+    const roofNeutral = new THREE.Color("#bdb8ae");
+    poses.forEach((p, i) => {
+      const { width: w, depth: d } = p;
+      place(body, i, p, 0, 0, 0, w, H, d);
+      place(roofCap, i, p, 0, H, 0, w * 0.99, 0.8, d * 0.99);
+      place(overhang, i, p, 0, H - 2.2, d * 0.2 + 2, w * 1.04, 1.3, d * 0.6);
+      place(garden, i, p, 0, H + 0.8, -d * 0.28, w * 0.6, 1, d * 0.22);
+      body.setColorAt(i, white);
+      roofCap.setColorAt(i, roofNeutral);
     });
-    const selRoof = new THREE.MeshStandardMaterial({ color: "#f2b53a", emissive: "#f2b53a", emissiveIntensity: 0.4 });
 
-    let showAvailability = false;
-    let selectedId: string | null = null;
-    const villaMeshes = new Map<string, THREE.Mesh>();
-    const byId = new Map(plots.map((p) => [p.id, p]));
-
-    function materialsFor(p: Plot): THREE.Material[] {
-      if (p.id === selectedId) return [selRoof, selWall];
-      return [showAvailability ? roofStatus[p.status] : roofNeutral, wallMat];
+    // ---- Trees along the streets and in the parks
+    const treeSpots: { x: number; z: number; s: number }[] = [];
+    let seed = 7;
+    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    poses.forEach((p) => {
+      const off = p.depth / 2 + 5;
+      treeSpots.push({ x: p.x + p.nx * off, z: p.z + p.nz * off, s: 0.8 + rand() * 0.45 });
+    });
+    const parks = [
+      { x0: 140, y0: 545, x1: 285, y1: 592, n: 10 },
+      { x0: 985, y0: 420, x1: 1150, y1: 482, n: 12 },
+      { x0: 1120, y0: 300, x1: 1150, y1: 440, n: 6 },
+    ];
+    for (const pk of parks) {
+      for (let k = 0; k < pk.n; k++) {
+        const w = toWorld(pk.x0 + rand() * (pk.x1 - pk.x0), pk.y0 + rand() * (pk.y1 - pk.y0));
+        treeSpots.push({ ...w, s: 0.9 + rand() * 0.6 });
+      }
+    }
+    const trunkGeo = track(new THREE.CylinderGeometry(0.5, 0.8, 7, 6).translate(0, 3.5, 0));
+    const canopyGeo = track(new THREE.IcosahedronGeometry(1, 1));
+    const trunks = new THREE.InstancedMesh(trunkGeo, track(new THREE.MeshStandardMaterial({ color: "#6b5238" })), treeSpots.length);
+    const canopies = new THREE.InstancedMesh(
+      canopyGeo,
+      track(new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.9, flatShading: true })),
+      treeSpots.length,
+    );
+    const greens = ["#4f7a33", "#5d8a3a", "#6b9444", "#46702f", "#7a9a4a"].map((c) => new THREE.Color(c));
+    treeSpots.forEach((t, i) => {
+      q.identity();
+      trunks.setMatrixAt(i, m4.compose(vPos.set(t.x, 0, t.z), q, vScale.set(t.s, t.s, t.s)));
+      q.setFromAxisAngle(UP, rand() * Math.PI);
+      canopies.setMatrixAt(i, m4.compose(vPos.set(t.x, 7 * t.s + 3.5 * t.s, t.z), q, vScale.set(5 * t.s, 5.8 * t.s, 5 * t.s)));
+      canopies.setColorAt(i, greens[i % greens.length]);
+    });
+    for (const m of [trunks, canopies]) {
+      m.castShadow = true;
+      scene.add(m);
     }
 
-    function extrude(points: { x: number; z: number }[], height: number) {
-      // Shape is drawn in X/Y then rotated so Y becomes -Z; negate z to keep orientation.
-      const shape = new THREE.Shape(points.map((p) => new THREE.Vector2(p.x, -p.z)));
-      const geo = new THREE.ExtrudeGeometry(shape, {
-        depth: height,
-        bevelEnabled: false,
-        UVGenerator: {
-          generateTopUV: (_g, vertices, a, b, c) =>
-            [a, b, c].map((i) => new THREE.Vector2(vertices[i * 3], vertices[i * 3 + 1])),
-          // Each wall maps the full facade: u across the wall, v from ground (0) to roof (1)
-          generateSideWallUV: (_g, vertices, a, b, c, d) => {
-            const v = (i: number) => vertices[i * 3 + 2] / height;
-            return [new THREE.Vector2(0, v(a)), new THREE.Vector2(1, v(b)), new THREE.Vector2(1, v(c)), new THREE.Vector2(0, v(d))];
-          },
-        },
-      });
-      geo.rotateX(-Math.PI / 2);
-      return geo;
+    // ---- Clubhouse
+    {
+      const a = toWorld(765, 400);
+      const b = toWorld(870, 495);
+      const cw = b.x - a.x;
+      const cd = b.z - a.z;
+      const clubWall = track(new THREE.MeshStandardMaterial({ map: track(makeClubTexture()), roughness: 0.5, metalness: 0.1 }));
+      const clubRoof = track(new THREE.MeshStandardMaterial({ color: "#b9b5ad", roughness: 0.9 }));
+      const club = new THREE.Mesh(unitBox, [clubWall, clubWall, clubRoof, clubRoof, clubWall, clubWall]);
+      club.scale.set(cw, 34, cd);
+      club.position.set((a.x + b.x) / 2, 0, (a.z + b.z) / 2);
+      // roof canopy overhang
+      const canopy = new THREE.Mesh(unitBox, overhangMat);
+      canopy.scale.set(cw + 8, 1.5, cd + 8);
+      canopy.position.set(club.position.x, 34, club.position.z);
+      for (const m of [club, canopy]) {
+        m.castShadow = m.receiveShadow = true;
+        scene.add(m);
+      }
     }
 
-    for (const p of plots) {
-      const mesh = new THREE.Mesh(extrude(parsePoints(p.points), VILLA_HEIGHT), materialsFor(p));
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      mesh.userData.id = p.id;
-      villaMeshes.set(p.id, mesh);
-      scene.add(mesh);
-    }
-
-    const buildingMat = new THREE.MeshStandardMaterial({ color: "#e9e6e0", roughness: 0.8 });
-    const buildingRoof = new THREE.MeshStandardMaterial({ color: "#9aa3a8", roughness: 0.6 });
-    for (const b of buildings) {
-      const pts = [toWorld(b.x0, b.y0), toWorld(b.x1, b.y0), toWorld(b.x1, b.y1), toWorld(b.x0, b.y1)];
-      const mesh = new THREE.Mesh(extrude(pts, b.height), [buildingRoof, buildingMat]);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      scene.add(mesh);
-    }
-
-    let facadePhoto: THREE.Texture | null = null;
+    // Real facade photo replaces the drawn one once loaded
     new THREE.TextureLoader().load(FACADE_IMAGE, (tex) => {
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-      facadePhoto = tex;
-      wallMat.map = selWall.map = tex;
-      wallMat.needsUpdate = selWall.needsUpdate = true;
+      facadeMat.map = track(tex);
+      facadeMat.needsUpdate = true;
     });
 
-    function refreshMaterials() {
-      villaMeshes.forEach((mesh, id) => (mesh.material = materialsFor(byId.get(id)!)));
+    // ---- Selection / availability
+    let showAvailability = false;
+    let selectedIndex = -1;
+    const gold = new THREE.Color("#ffcf66");
+    const statusCol = Object.fromEntries(
+      (Object.keys(statusColor) as PlotStatus[]).map((s) => [s, new THREE.Color(statusColor[s])]),
+    ) as Record<PlotStatus, THREE.Color>;
+    const indexById = new Map(poses.map((p, i) => [p.plot.id, i]));
+
+    function paint() {
+      poses.forEach((p, i) => {
+        body.setColorAt(i, i === selectedIndex ? gold : white);
+        roofCap.setColorAt(i, i === selectedIndex ? gold : showAvailability ? statusCol[p.plot.status] : roofNeutral);
+      });
+      body.instanceColor!.needsUpdate = true;
+      roofCap.instanceColor!.needsUpdate = true;
     }
 
     // Landmark labels (HTML, projected every frame)
@@ -277,70 +462,120 @@ export default function Community3D() {
       el.textContent = l.label;
       labelLayer.appendChild(el);
       const w = toWorld(l.x, l.y);
-      return { el, pos: new THREE.Vector3(w.x, l.label === "Clubhouse" ? 60 : 20, w.z) };
+      return { el, pos: new THREE.Vector3(w.x, l.h, w.z) };
     });
 
-    // Picking: a click/tap that didn't drag selects a villa
+    // ---- Camera flights
+    type Flight = { from: THREE.Vector3; to: THREE.Vector3; tFrom: THREE.Vector3; tTo: THREE.Vector3; start: number; dur: number; lift: number };
+    let fly: Flight | null = null;
+    function flyTo(position: THREE.Vector3, target: THREE.Vector3, dur = 1.6) {
+      const dist = camera.position.distanceTo(position);
+      fly = { from: camera.position.clone(), to: position, tFrom: controls.target.clone(), tTo: target, start: performance.now(), dur: dur * 1000, lift: Math.min(220, dist * 0.25) };
+    }
+    const stopVec = (s: [number, number, number]) => {
+      const w = toWorld(s[0], s[1]);
+      return new THREE.Vector3(w.x, s[2], w.z);
+    };
+
+    // ---- Guided tour
+    let tour: { index: number; playing: boolean; arrivedAt: number | null } | null = null;
+    function goStop(i: number) {
+      const s = tourStops[i];
+      tour = { index: i, playing: tour?.playing ?? true, arrivedAt: null };
+      setTourIndex(i);
+      setIntro(false);
+      select(null, false);
+      controls.autoRotate = false;
+      setAutoRotate(false);
+      flyTo(stopVec(s.camera), stopVec(s.target), i === 0 ? 2.6 : 3.4);
+    }
+    function setTourPlaying(on: boolean) {
+      if (!tour) return;
+      tour.playing = on;
+      if (on) tour.arrivedAt = fly ? null : performance.now();
+      setPlaying(on);
+    }
+    function startTour() {
+      tour = { index: 0, playing: true, arrivedAt: null };
+      setPlaying(true);
+      goStop(0);
+    }
+    function exitTour() {
+      tour = null;
+      setTourIndex(null);
+      setPlaying(false);
+      flyTo(HOME_CAMERA.clone(), new THREE.Vector3(), 2.4);
+    }
+
+    controls.addEventListener("start", () => {
+      controls.autoRotate = false;
+      setAutoRotate(false);
+      setIntro(false);
+      if (tour?.playing) setTourPlaying(false);
+      fly = null;
+    });
+
+    // ---- Picking
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     let downAt: { x: number; y: number } | null = null;
-    const meshList = [...villaMeshes.values()];
-
     function pick(clientX: number, clientY: number) {
       const r = renderer.domElement.getBoundingClientRect();
       pointer.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
       raycaster.setFromCamera(pointer, camera);
-      return raycaster.intersectObjects(meshList, false)[0]?.object as THREE.Mesh | undefined;
+      const hit = raycaster.intersectObjects([body, roofCap], false)[0];
+      return hit?.instanceId;
     }
-
+    function select(id: string | null, flyThere = true) {
+      selectedIndex = id ? (indexById.get(id) ?? -1) : -1;
+      paint();
+      setSelected(selectedIndex >= 0 ? poses[selectedIndex].plot : null);
+      if (selectedIndex >= 0 && flyThere) {
+        if (tour) {
+          tour = null;
+          setTourIndex(null);
+          setPlaying(false);
+        }
+        const p = poses[selectedIndex];
+        const target = new THREE.Vector3(p.x, H * 0.45, p.z);
+        flyTo(new THREE.Vector3(p.x + p.nx * 150, 80, p.z + p.nz * 150), target);
+        controls.autoRotate = false;
+        setAutoRotate(false);
+        setIntro(false);
+      }
+    }
     function onDown(e: PointerEvent) {
       downAt = { x: e.clientX, y: e.clientY };
     }
     function onUp(e: PointerEvent) {
       if (!downAt || Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6) return;
-      const hit = pick(e.clientX, e.clientY);
-      select(hit ? (hit.userData.id as string) : null);
+      const i = pick(e.clientX, e.clientY);
+      select(i === undefined ? null : poses[i].plot.id);
     }
     function onMove(e: PointerEvent) {
       if (e.pointerType !== "mouse") return;
-      renderer.domElement.style.cursor = pick(e.clientX, e.clientY) ? "pointer" : "grab";
+      renderer.domElement.style.cursor = pick(e.clientX, e.clientY) === undefined ? "grab" : "pointer";
     }
     renderer.domElement.addEventListener("pointerdown", onDown);
     renderer.domElement.addEventListener("pointerup", onUp);
     renderer.domElement.addEventListener("pointermove", onMove);
 
-    // Camera fly-to animation
-    let fly: { from: THREE.Vector3; to: THREE.Vector3; tFrom: THREE.Vector3; tTo: THREE.Vector3; t: number } | null =
-      null;
-    function flyTo(position: THREE.Vector3, target: THREE.Vector3) {
-      fly = { from: camera.position.clone(), to: position, tFrom: controls.target.clone(), tTo: target, t: 0 };
-    }
-
-    function select(id: string | null) {
-      selectedId = id;
-      refreshMaterials();
-      setSelected(id ? byId.get(id)! : null);
-      if (id) {
-        const box = new THREE.Box3().setFromObject(villaMeshes.get(id)!);
-        const c = box.getCenter(new THREE.Vector3());
-        const dir = camera.position.clone().sub(controls.target).setY(0).normalize();
-        flyTo(c.clone().add(dir.multiplyScalar(230)).setY(105), c);
-        controls.autoRotate = false;
-        setAutoRotate(false);
-      }
-    }
-
     api.current = {
       reset: () => {
         select(null);
-        flyTo(HOME_CAMERA.clone(), new THREE.Vector3());
+        if (tour) exitTour();
+        else flyTo(HOME_CAMERA.clone(), new THREE.Vector3());
       },
       setAutoRotate: (on) => (controls.autoRotate = on),
       setAvailability: (on) => {
         showAvailability = on;
-        refreshMaterials();
+        paint();
       },
-      select,
+      select: (id) => select(id),
+      startTour,
+      exitTour,
+      goStop: (i) => goStop(Math.max(0, Math.min(tourStops.length - 1, i))),
+      setPlaying: setTourPlaying,
     };
 
     // Resize
@@ -352,19 +587,37 @@ export default function Community3D() {
     });
     ro.observe(container);
 
-    // Render loop
+    // Start the tour straight away when linked with #tour
+    const autoStart = window.location.hash === "#tour" ? setTimeout(startTour, 600) : undefined;
+
+    // ---- Render loop
+    const clock = new THREE.Clock();
     const tmp = new THREE.Vector3();
+    const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
     let raf = 0;
-    const ease = (t: number) => 1 - Math.pow(1 - t, 3);
     function tick() {
       raf = requestAnimationFrame(tick);
+      const dt = Math.min(clock.getDelta(), 0.1);
+
       if (fly) {
-        fly.t = Math.min(1, fly.t + 0.025);
-        const k = ease(fly.t);
+        // time-based so flights finish on schedule even on slow devices
+        const t = Math.min(1, (performance.now() - fly.start) / fly.dur);
+        const k = ease(t);
         camera.position.lerpVectors(fly.from, fly.to, k);
+        camera.position.y += Math.sin(Math.PI * k) * fly.lift;
         controls.target.lerpVectors(fly.tFrom, fly.tTo, k);
-        if (fly.t === 1) fly = null;
+        if (t === 1) fly = null;
+      } else if (tour) {
+        if (tour.arrivedAt === null) tour.arrivedAt = performance.now();
+        // slow cinematic orbit while a stop is shown
+        tmp.copy(camera.position).sub(controls.target).applyAxisAngle(UP, dt * 0.05);
+        camera.position.copy(controls.target).add(tmp);
+        if (tour.playing && performance.now() - tour.arrivedAt > DWELL_MS) {
+          if (tour.index < tourStops.length - 1) goStop(tour.index + 1);
+          else setTourPlaying(false);
+        }
       }
+
       controls.update();
       renderer.render(scene, camera);
 
@@ -373,16 +626,13 @@ export default function Community3D() {
         tmp.copy(l.pos).project(camera);
         const visible = tmp.z < 1 && Math.abs(tmp.x) < 1.1 && Math.abs(tmp.y) < 1.1;
         l.el.style.display = visible ? "block" : "none";
-        if (visible) {
-          const x = (tmp.x * 0.5 + 0.5) * w;
-          const y = (-tmp.y * 0.5 + 0.5) * h;
-          l.el.style.transform = `translate(-50%, -100%) translate(${x}px, ${y}px)`;
-        }
+        if (visible) l.el.style.transform = `translate(-50%, -100%) translate(${(tmp.x * 0.5 + 0.5) * w}px, ${(-tmp.y * 0.5 + 0.5) * h}px)`;
       }
     }
     tick();
 
     return () => {
+      clearTimeout(autoStart);
       cancelAnimationFrame(raf);
       ro.disconnect();
       controls.dispose();
@@ -390,12 +640,8 @@ export default function Community3D() {
       renderer.domElement.removeEventListener("pointerup", onUp);
       renderer.domElement.removeEventListener("pointermove", onMove);
       labelEls.forEach((l) => l.el.remove());
-      scene.traverse((o) => {
-        if (o instanceof THREE.Mesh) o.geometry.dispose();
-      });
-      facade.dispose();
-      facadePhoto?.dispose();
-      skyTex.dispose();
+      [body, roofCap, overhang, garden, trunks, canopies].forEach((m) => m.dispose());
+      disposables.forEach((d) => d.dispose());
       renderer.dispose();
       renderer.domElement.remove();
       api.current = null;
@@ -403,6 +649,7 @@ export default function Community3D() {
   }, []);
 
   const selectedType = selected?.type ? getVillaType(selected.type) : undefined;
+  const stop = tourIndex !== null ? tourStops[tourIndex] : null;
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#9cc3e6]">
@@ -411,20 +658,30 @@ export default function Community3D() {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/45 to-transparent" />
 
       {!loaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-neutral-900 text-sm uppercase tracking-[0.3em] text-white">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-neutral-950 text-sm uppercase tracking-[0.3em] text-white">
           Loading 3D community…
         </div>
       )}
 
-      <div className="pointer-events-none absolute left-4 top-20 text-white drop-shadow sm:left-6">
-        <p className="text-xs uppercase tracking-[0.3em] opacity-90">3D Community View</p>
-        <p className="mt-1 hidden text-sm opacity-90 sm:block">
-          Drag to rotate · Right-drag to move · Scroll to zoom · Click a villa
-        </p>
-        <p className="mt-1 text-xs opacity-90 sm:hidden">Drag to rotate · Pinch to zoom · Tap a villa</p>
-      </div>
+      {!stop && (
+        <div className="pointer-events-none absolute left-4 top-20 text-white drop-shadow sm:left-6">
+          <p className="text-xs uppercase tracking-[0.3em] opacity-90">3D Community View</p>
+          <p className="mt-1 hidden text-sm opacity-90 sm:block">
+            Drag to rotate · Right-drag to move · Scroll to zoom · Click a villa
+          </p>
+          <p className="mt-1 text-xs opacity-90 sm:hidden">Drag to rotate · Pinch to zoom · Tap a villa</p>
+        </div>
+      )}
 
-      <div className="absolute right-4 top-20 flex flex-col gap-2 sm:right-6">
+      <div className="absolute right-4 top-20 flex flex-col items-end gap-2 sm:right-6">
+        {!stop && (
+          <button
+            onClick={() => api.current?.startTour()}
+            className="rounded-full bg-[#d4a843] px-4 py-2 text-xs font-semibold uppercase tracking-wider text-neutral-950 shadow-lg hover:bg-[#e2b955]"
+          >
+            ▶ Digi Tour
+          </button>
+        )}
         <ToggleButton
           active={availability}
           onClick={() => {
@@ -435,16 +692,18 @@ export default function Community3D() {
         >
           Availability
         </ToggleButton>
-        <ToggleButton
-          active={autoRotate}
-          onClick={() => {
-            const on = !autoRotate;
-            setAutoRotate(on);
-            api.current?.setAutoRotate(on);
-          }}
-        >
-          Auto-rotate
-        </ToggleButton>
+        {!stop && (
+          <ToggleButton
+            active={autoRotate}
+            onClick={() => {
+              const on = !autoRotate;
+              setAutoRotate(on);
+              api.current?.setAutoRotate(on);
+            }}
+          >
+            Auto-rotate
+          </ToggleButton>
+        )}
         <ToggleButton active={false} onClick={() => api.current?.reset()}>
           Reset view
         </ToggleButton>
@@ -461,7 +720,85 @@ export default function Community3D() {
         </div>
       )}
 
-      {selected && (
+      {/* Intro */}
+      {loaded && intro && !stop && (
+        <div className="absolute inset-x-4 bottom-28 mx-auto max-w-md rounded-2xl bg-neutral-950/80 p-5 text-center text-white shadow-2xl backdrop-blur sm:p-6">
+          <p className="text-xs uppercase tracking-[0.3em] text-[#d4a843]">Digi Tour</p>
+          <h2 className="mt-2 text-xl font-light sm:text-2xl">Fly through {project.name}</h2>
+          <p className="mt-2 text-sm opacity-80">A guided aerial tour of the entrance, clubhouse, parks and villa streets.</p>
+          <div className="mt-4 flex justify-center gap-2">
+            <button
+              onClick={() => api.current?.startTour()}
+              className="rounded-full bg-[#d4a843] px-5 py-2.5 text-sm font-semibold text-neutral-950 hover:bg-[#e2b955]"
+            >
+              ▶ Start Digi Tour
+            </button>
+            <button onClick={() => setIntro(false)} className="rounded-full border border-white/40 px-5 py-2.5 text-sm hover:bg-white/10">
+              Explore myself
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Tour caption */}
+      {stop && tourIndex !== null && (
+        <div className="absolute inset-x-4 bottom-28 mx-auto max-w-lg rounded-2xl bg-neutral-950/80 p-5 text-white shadow-2xl backdrop-blur">
+          <div className="flex items-center justify-between text-xs uppercase tracking-[0.25em] text-[#d4a843]">
+            <span>
+              Digi Tour · {tourIndex + 1} / {tourStops.length}
+            </span>
+            <button onClick={() => api.current?.exitTour()} className="text-white/70 hover:text-white" aria-label="Exit tour">
+              Exit ✕
+            </button>
+          </div>
+          <h2 className="mt-2 text-2xl font-light">{stop.title}</h2>
+          <p className="mt-1 text-sm opacity-85">{stop.text}</p>
+          {stop.finale ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/master-plan" className="rounded-full bg-[#d4a843] px-4 py-2 text-sm font-semibold text-neutral-950">
+                Explore master plan
+              </Link>
+              <Link href="/contact" className="rounded-full border border-white/40 px-4 py-2 text-sm">
+                Book a site visit
+              </Link>
+            </div>
+          ) : (
+            stop.scene && (
+              <Link href={`/exterior#${stop.scene}`} className="mt-3 inline-block text-sm text-[#d4a843] underline-offset-4 hover:underline">
+                See the street view →
+              </Link>
+            )
+          )}
+          <div className="mt-4 flex items-center gap-3">
+            <TourButton label="Previous stop" onClick={() => api.current?.goStop(tourIndex - 1)} disabled={tourIndex === 0}>
+              <path d="M15 5l-7 7 7 7" />
+            </TourButton>
+            <TourButton label={playing ? "Pause tour" : "Play tour"} onClick={() => api.current?.setPlaying(!playing)}>
+              {playing ? <path d="M9 6v12M15 6v12" /> : <path d="M9 6l9 6-9 6z" fill="currentColor" />}
+            </TourButton>
+            <TourButton
+              label="Next stop"
+              onClick={() => api.current?.goStop(tourIndex + 1)}
+              disabled={tourIndex === tourStops.length - 1}
+            >
+              <path d="M9 5l7 7-7 7" />
+            </TourButton>
+            <div className="ml-auto flex gap-1.5">
+              {tourStops.map((s, i) => (
+                <button
+                  key={s.title}
+                  aria-label={s.title}
+                  onClick={() => api.current?.goStop(i)}
+                  className={`h-1.5 rounded-full transition-all ${i === tourIndex ? "w-5 bg-[#d4a843]" : "w-1.5 bg-white/40"}`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Selected villa */}
+      {selected && !stop && (
         <div className="absolute bottom-28 left-4 w-[calc(100%-2rem)] max-w-xs rounded-2xl bg-white/95 p-4 shadow-2xl backdrop-blur sm:left-6">
           <div className="flex items-start justify-between">
             <div>
@@ -514,15 +851,7 @@ export default function Community3D() {
   );
 }
 
-function ToggleButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
+function ToggleButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
@@ -531,6 +860,31 @@ function ToggleButton({
       }`}
     >
       {children}
+    </button>
+  );
+}
+
+function TourButton({
+  label,
+  onClick,
+  disabled = false,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-neutral-950 hover:bg-white/90 disabled:opacity-30"
+    >
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
+        {children}
+      </svg>
     </button>
   );
 }
