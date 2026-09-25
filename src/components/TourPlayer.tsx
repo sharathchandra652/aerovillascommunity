@@ -241,8 +241,14 @@ export default function TourPlayer() {
 
       {/* Expanded layout */}
       {mapExpanded && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-5xl overflow-hidden rounded-xl bg-white text-neutral-900 shadow-2xl">
+        <div
+          className="absolute inset-0 z-30 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          onClick={() => setMapExpanded(false)}
+        >
+          <div
+            className="w-full max-w-5xl overflow-hidden rounded-xl bg-white text-neutral-900 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <MiniMap scene={scene} zoom={1} onPick={goTo} className="aspect-[16/9] w-full" labels />
             <div className="flex items-center justify-between gap-3 px-4 py-3">
               <span className="text-sm font-medium">Tap a point to jump there</span>
