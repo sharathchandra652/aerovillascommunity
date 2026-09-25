@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { Sky } from "three/addons/objects/Sky.js";
-import { getVillaType, project, whatsappLink } from "@/data/project";
+import { getVillaType, project, villaTypes, whatsappLink } from "@/data/project";
 import { MASTER_PLAN_VIEWBOX, plots, type Plot, type PlotStatus } from "@/data/plots";
 
 // 3D community view and guided "Digi Tour".
@@ -39,8 +39,13 @@ type Stop = {
   camera: [number, number, number];
   target: [number, number, number];
   scene?: string; // exterior walkthrough scene with a render of this spot
+  photo?: string; // real render shown full-screen once the camera arrives
+  tour360?: string; // 360° villa tour opened from this stop
   finale?: boolean;
 };
+
+const tour267 = villaTypes.find((v) => v.slug === "267")?.tour;
+const TOUR_267 = tour267?.kind === "embed" ? tour267.url : undefined;
 const tourStops: Stop[] = [
   {
     title: `Welcome to ${project.name}`,
@@ -60,6 +65,7 @@ const tourStops: Stop[] = [
     camera: [520, 610, 85],
     target: [960, 512, 0],
     scene: "main-avenue",
+    photo: "/media/exterior/main-avenue.jpg",
   },
   {
     title: "Clubhouse & Pool",
@@ -79,6 +85,24 @@ const tourStops: Stop[] = [
     camera: [1148, 1030, 75],
     target: [1148, 660, 8],
     scene: "villa-avenue",
+    photo: "/media/exterior/street-view-2.jpg",
+  },
+  {
+    title: "Villa Row",
+    text: "Contemporary villas with stone, timber and planted balconies line every street.",
+    camera: [1375, 900, 80],
+    target: [1375, 740, 10],
+    scene: "villa-row-day",
+    photo: "/media/exterior/villa-row-day.jpg",
+  },
+  {
+    title: "The 267 sq.yd Villa",
+    text: "Step inside the 267 sq.yd villa with the 360° virtual tour.",
+    camera: [885, 700, 80],
+    target: [885, 600, 10],
+    scene: "villa-267",
+    photo: "/media/villas/267/elevation-a.jpg",
+    tour360: TOUR_267,
   },
   {
     title: "North-East Villas",
@@ -242,6 +266,7 @@ export default function Community3D() {
     setPlaying: (on: boolean) => void;
     setFilter: (f: Filter) => void;
     setNight: (on: boolean) => void;
+    setRealistic: (on: boolean) => void;
   } | null>(null);
 
   const [loaded, setLoaded] = useState(false);
@@ -252,6 +277,9 @@ export default function Community3D() {
   const [tourIndex, setTourIndex] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const [night, setNight] = useState(false);
+  const [realistic, setRealistic] = useState(true);
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [pano360, setPano360] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [filter, setFilterState] = useState<Filter>(NO_FILTER);
   const filtering = filter.type !== "all" || filter.facing !== "all" || filter.status !== "all";
@@ -342,6 +370,9 @@ export default function Community3D() {
       setLoaded(true);
     });
 
+    // Everything drawn as simplified geometry; hidden in realistic (photo) mode
+    const modelMeshes: THREE.Object3D[] = [];
+
     // ---- Villas (instanced: one draw call per part)
     const poses = computePoses();
     const N = poses.length;
@@ -422,6 +453,7 @@ export default function Community3D() {
       canopies.setMatrixAt(i, m4.compose(vPos.set(t.x, 7 * t.s + 3.5 * t.s, t.z), q, vScale.set(5 * t.s, 5.8 * t.s, 5 * t.s)));
       canopies.setColorAt(i, greens[i % greens.length]);
     });
+    modelMeshes.push(body, roofCap, overhang, garden, trunks, canopies);
     for (const m of [trunks, canopies]) {
       m.castShadow = true;
       scene.add(m);
@@ -442,6 +474,7 @@ export default function Community3D() {
       const canopy = new THREE.Mesh(unitBox, overhangMat);
       canopy.scale.set(cw + 8, 1.5, cd + 8);
       canopy.position.set(club.position.x, 34, club.position.z);
+      modelMeshes.push(club, canopy);
       for (const m of [club, canopy]) {
         m.castShadow = m.receiveShadow = true;
         scene.add(m);
@@ -467,6 +500,14 @@ export default function Community3D() {
     ) as Record<PlotStatus, THREE.Color>;
     const indexById = new Map(poses.map((p, i) => [p.plot.id, i]));
 
+    // Realistic mode: flat translucent tiles over the villas in the aerial render
+    let realisticMode = true;
+    const tintMat = track(new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0.55, depthWrite: false }));
+    const tint = new THREE.InstancedMesh(unitBox, tintMat, N);
+    tint.renderOrder = 1;
+    scene.add(tint);
+    const shade = new THREE.Color("#101418");
+
     function paint() {
       const filtering = filter.type !== "all" || filter.facing !== "all" || filter.status !== "all";
       poses.forEach((p, i) => {
@@ -480,6 +521,17 @@ export default function Community3D() {
       });
       body.instanceColor!.needsUpdate = true;
       roofCap.instanceColor!.needsUpdate = true;
+
+      // tiles: shown for the selection, filter matches (others shaded) and availability
+      poses.forEach((p, i) => {
+        const match = matchesFilter(p.plot, filter);
+        const sel = i === selectedIndex;
+        const show = realisticMode && (sel || filtering || showAvailability);
+        place(tint, i, p, 0, 0.4, 0, show ? p.width : 0, show ? 1 : 0, show ? p.depth : 0);
+        tint.setColorAt(i, sel ? gold : filtering ? (match ? gold : shade) : statusCol[p.plot.status]);
+      });
+      tint.instanceMatrix.needsUpdate = true;
+      tint.instanceColor!.needsUpdate = true;
     }
 
     // Landmark labels (HTML, projected every frame)
@@ -515,7 +567,22 @@ export default function Community3D() {
       select(null, false);
       controls.autoRotate = false;
       setAutoRotate(false);
-      flyTo(stopVec(s.camera), stopVec(s.target), i === 0 ? 2.6 : 3.4);
+      setPhoto(null);
+      flyTo(stopCamera(s), stopVec(s.target), i === 0 ? 2.6 : 3.4);
+    }
+    // In realistic mode low street-level cameras are lifted into a drone view
+    function stopCamera(s: Stop) {
+      const c = stopVec(s.camera);
+      if (!realisticMode || c.y >= 400) return c;
+      const t = stopVec(s.target);
+      const d = c.clone().sub(t).setY(0);
+      if (d.lengthSq() < 1) d.set(0, 0, 1);
+      d.normalize().multiplyScalar(330);
+      return t.add(d).setY(430);
+    }
+    function onArrive(i: number) {
+      const s = tourStops[i];
+      if (s.photo) setPhoto(s.photo);
     }
     function setTourPlaying(on: boolean) {
       if (!tour) return;
@@ -530,6 +597,7 @@ export default function Community3D() {
     }
     function exitTour() {
       tour = null;
+      setPhoto(null);
       setTourIndex(null);
       setPlaying(false);
       flyTo(HOME_CAMERA.clone(), new THREE.Vector3(), 2.4);
@@ -544,6 +612,16 @@ export default function Community3D() {
     });
 
     // ---- Picking
+    const plotPolys = poses.map((p) => p.plot.points.split(" ").map((q) => q.split(",").map(Number)));
+    const inside = (x: number, y: number, poly: number[][]) => {
+      let c = false;
+      for (let a = 0, b = poly.length - 1; a < poly.length; b = a++) {
+        const [xa, ya] = poly[a];
+        const [xb, yb] = poly[b];
+        if (ya > y !== yb > y && x < ((xb - xa) * (y - ya)) / (yb - ya) + xa) c = !c;
+      }
+      return c;
+    };
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     let downAt: { x: number; y: number } | null = null;
@@ -551,8 +629,13 @@ export default function Community3D() {
       const r = renderer.domElement.getBoundingClientRect();
       pointer.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
       raycaster.setFromCamera(pointer, camera);
-      const hit = raycaster.intersectObjects([body, roofCap], false)[0];
-      return hit?.instanceId;
+      if (!realisticMode) return raycaster.intersectObjects([body, roofCap], false)[0]?.instanceId;
+      const g = raycaster.intersectObject(ground, false)[0];
+      if (!g) return undefined;
+      const x = g.point.x + MAP_W / 2;
+      const y = g.point.z + MAP_H / 2;
+      const i = plotPolys.findIndex((poly) => inside(x, y, poly));
+      return i < 0 ? undefined : i;
     }
     function select(id: string | null, flyThere = true) {
       selectedIndex = id ? (indexById.get(id) ?? -1) : -1;
@@ -566,7 +649,12 @@ export default function Community3D() {
         }
         const p = poses[selectedIndex];
         const target = new THREE.Vector3(p.x, H * 0.45, p.z);
-        flyTo(new THREE.Vector3(p.x + p.nx * 150, 80, p.z + p.nz * 150), target);
+        flyTo(
+          realisticMode
+            ? new THREE.Vector3(p.x + p.nx * 230, 300, p.z + p.nz * 230)
+            : new THREE.Vector3(p.x + p.nx * 150, 80, p.z + p.nz * 150),
+          target,
+        );
         controls.autoRotate = false;
         setAutoRotate(false);
         setIntro(false);
@@ -608,7 +696,17 @@ export default function Community3D() {
       grassMat.color.set(on ? "#1f2a22" : "#53592e");
     }
 
+    function applyRealistic(on: boolean) {
+      realisticMode = on;
+      modelMeshes.forEach((m) => (m.visible = !on));
+      controls.maxPolarAngle = THREE.MathUtils.degToRad(on ? 55 : 84);
+      controls.minDistance = on ? 200 : 40;
+      paint();
+    }
+    applyRealistic(true);
+
     api.current = {
+      setRealistic: applyRealistic,
       setFilter: (f) => {
         filter = f;
         paint();
@@ -661,11 +759,15 @@ export default function Community3D() {
         controls.target.lerpVectors(fly.tFrom, fly.tTo, k);
         if (t === 1) fly = null;
       } else if (tour) {
-        if (tour.arrivedAt === null) tour.arrivedAt = performance.now();
+        if (tour.arrivedAt === null) {
+          tour.arrivedAt = performance.now();
+          onArrive(tour.index);
+        }
         // slow cinematic orbit while a stop is shown
         tmp.copy(camera.position).sub(controls.target).applyAxisAngle(UP, dt * 0.05);
         camera.position.copy(controls.target).add(tmp);
-        if (tour.playing && performance.now() - tour.arrivedAt > DWELL_MS) {
+        const dwell = tourStops[tour.index].photo ? DWELL_MS + 2500 : DWELL_MS;
+        if (tour.playing && performance.now() - tour.arrivedAt > dwell) {
           if (tour.index < tourStops.length - 1) goStop(tour.index + 1);
           else setTourPlaying(false);
         }
@@ -693,7 +795,7 @@ export default function Community3D() {
       renderer.domElement.removeEventListener("pointerup", onUp);
       renderer.domElement.removeEventListener("pointermove", onMove);
       labelEls.forEach((l) => l.el.remove());
-      [body, roofCap, overhang, garden, trunks, canopies].forEach((m) => m.dispose());
+      [body, roofCap, overhang, garden, trunks, canopies, tint].forEach((m) => m.dispose());
       disposables.forEach((d) => d.dispose());
       renderer.dispose();
       renderer.domElement.remove();
@@ -708,6 +810,13 @@ export default function Community3D() {
     <div className="relative h-full w-full overflow-hidden bg-[#9cc3e6]">
       <div ref={mount} className="absolute inset-0 touch-none" />
       <div ref={labelsRef} className="pointer-events-none absolute inset-0" />
+      {/* Real render shown at street-level tour stops */}
+      <div className={`pointer-events-none absolute inset-0 overflow-hidden bg-black transition-opacity duration-1000 ${photo ? "opacity-100" : "opacity-0"}`}>
+        {photo && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={photo} src={photo} alt="" className="kenburns h-full w-full object-cover" />
+        )}
+      </div>
       <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/45 to-transparent" />
 
       {!loaded && (
@@ -758,6 +867,16 @@ export default function Community3D() {
           </ToggleButton>
         )}
         <ToggleButton
+          active={!realistic}
+          onClick={() => {
+            const on = !realistic;
+            setRealistic(on);
+            api.current?.setRealistic(on);
+          }}
+        >
+          {realistic ? "Realistic" : "3D model"}
+        </ToggleButton>
+        <ToggleButton
           active={night}
           onClick={() => {
             const on = !night;
@@ -783,6 +902,35 @@ export default function Community3D() {
               {statusLabel[s]}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* 360° villa tour */}
+      {pano360 && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 text-white">
+            <p className="text-xs uppercase tracking-[0.3em] text-[#d4a843]">360° Villa Tour</p>
+            <div className="flex gap-2">
+              <a
+                href={pano360}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full border border-white/40 px-4 py-1.5 text-xs hover:bg-white/10"
+              >
+                Open in new tab ↗
+              </a>
+              <button onClick={() => setPano360(null)} className="rounded-full bg-white px-4 py-1.5 text-xs font-medium text-neutral-950">
+                Close ✕
+              </button>
+            </div>
+          </div>
+          <iframe
+            src={pano360}
+            title="360° villa tour"
+            className="w-full flex-1 border-0"
+            allow="fullscreen; xr-spatial-tracking; gyroscope; accelerometer"
+            allowFullScreen
+          />
         </div>
       )}
 
@@ -866,6 +1014,17 @@ export default function Community3D() {
           </div>
           <h2 className="mt-2 text-2xl font-light">{stop.title}</h2>
           <p className="mt-1 text-sm opacity-85">{stop.text}</p>
+          {stop.tour360 && (
+            <button
+              onClick={() => {
+                api.current?.setPlaying(false);
+                setPano360(stop.tour360!);
+              }}
+              className="mt-3 mr-3 rounded-full bg-[#d4a843] px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-[#e2b955]"
+            >
+              Step inside — 360° tour
+            </button>
+          )}
           {stop.finale ? (
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href="/master-plan" className="rounded-full bg-[#d4a843] px-4 py-2 text-sm font-semibold text-neutral-950">
