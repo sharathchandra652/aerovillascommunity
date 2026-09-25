@@ -10,6 +10,16 @@ with our own layout, renders and branding — nothing is copied from that site.
 
 ---
 
+## 0. Current status
+
+- The community is **under construction**, so there's no outdoor 360° tour yet.
+- **Villa tours exist for the three villa types: 267, 567 and 600 sq.yd.**
+- The website skeleton is built (Next.js): Home, interactive Master Plan (sample plots),
+  villa pages for 267 / 567 / 600 with tour + floor plan slots, Gallery and Contact
+  (WhatsApp enquiry). It shows "coming soon" placeholders until the real files arrive.
+- What to send and where it goes: see [SEND_FILES.md](SEND_FILES.md).
+- The 360° exterior tour (module 2 below) moves to later, once exterior renders or a drone shoot are available.
+
 ## 1. What the finished site contains
 
 | # | Page / module | What the buyer can do |
