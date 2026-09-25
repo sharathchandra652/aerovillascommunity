@@ -387,6 +387,7 @@ export default function Community3D() {
     <div className="relative h-full w-full overflow-hidden bg-[#9cc3e6]">
       <div ref={mount} className="absolute inset-0 touch-none" />
       <div ref={labelsRef} className="pointer-events-none absolute inset-0" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/45 to-transparent" />
 
       {!loaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-neutral-900 text-sm uppercase tracking-[0.3em] text-white">
