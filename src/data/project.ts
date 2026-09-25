@@ -35,7 +35,7 @@ export const project = {
   mapEmbedUrl: "", // TODO: Google Maps embed URL for the site pin
   heroVideo: "", // e.g. "/media/hero.mp4" (drone / walkthrough video)
   heroImage: "/media/exterior/main-avenue.jpg",
-  layoutImage: "", // e.g. "/media/master-plan.jpg" — shown behind the clickable plots
+  layoutImage: "/media/master-plan.jpg", // aerial render shown behind the clickable villas
   stats: [
     { label: "Acres", value: "—" },
     { label: "Villas", value: "—" },
@@ -55,6 +55,7 @@ export const project = {
   // Exterior street-view renders, shown on the Exterior page and in the gallery
   exterior: [
     { src: "/media/exterior/main-avenue.jpg", caption: "Main avenue — tree-lined internal road" },
+    { src: "/media/master-plan.jpg", caption: "Aerial view — master layout" },
     { src: "/media/exterior/villa-row-day.jpg", caption: "Villa row — street view" },
     { src: "/media/exterior/villa-row-evening.jpg", caption: "Villa row — evening" },
     { src: "/media/exterior/private-pool-garden.jpg", caption: "Private pool & garden deck" },
