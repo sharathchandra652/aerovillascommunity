@@ -13,3 +13,12 @@ npm run dev   # http://localhost:3000
 
 Content lives in `src/data/project.ts` and `src/data/plots.ts`; media in `public/media/`.
 What to send for the real content: [docs/SEND_FILES.md](docs/SEND_FILES.md).
+
+## Offline preview
+
+```bash
+npm run package:offline   # → dist/aero-villas-offline.zip
+```
+
+Unzip and double-click `Start Aero Villas (Windows).bat` or `Start Aero Villas (Mac).command`.
+See `offline/README.txt` for what works without internet.

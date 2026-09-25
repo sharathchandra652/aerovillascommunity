@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "build:offline": "OFFLINE=1 next build",
+    "package:offline": "bash scripts/package-offline.sh"
   },
   "dependencies": {
     "next": "16.3.6",
