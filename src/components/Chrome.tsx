@@ -5,10 +5,11 @@ import { usePathname } from "next/navigation";
 import { project, whatsappLink } from "@/data/project";
 
 // Pages that fill the whole screen with an image; the chrome floats over them in white.
-const IMMERSIVE = ["/", "/exterior"];
+const IMMERSIVE = ["/", "/3d", "/exterior"];
 
 const items = [
   { href: "/", label: "Home", icon: "M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z" },
+  { href: "/3d", label: "3D View", short: "3D", icon: "M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5" },
   { href: "/exterior", label: "Exterior", icon: "M3 21h18M5 21V10l7-5 7 5v11M9 21v-5h6v5" },
   { href: "/master-plan", label: "Master Plan", short: "Plan", icon: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" },
   { href: "/villas/267", match: "/villas", label: "Villas", icon: "M4 21V8l8-5 8 5v13M9 21v-6h6v6M4 12h16" },
@@ -66,7 +67,7 @@ export function Dock() {
             <li key={item.href}>
               <Link
                 href={item.href}
-                className={`flex w-[3.25rem] flex-col items-center gap-1 rounded-xl px-1 py-2 text-[10px] sm:w-20 sm:text-xs ${
+                className={`flex w-[2.85rem] flex-col items-center gap-1 rounded-xl px-1 py-2 text-[10px] sm:w-20 sm:text-xs ${
                   active ? "bg-white text-brand" : "hover:bg-white/10"
                 }`}
               >

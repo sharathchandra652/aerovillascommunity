@@ -13,16 +13,16 @@ export default function Home() {
         <p className="mt-4 max-w-lg text-base opacity-90 sm:text-lg">{project.tagline}</p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
-            href="/exterior"
+            href="/3d"
             className="rounded-full bg-white px-6 py-3 text-sm font-medium uppercase tracking-wider text-brand hover:bg-white/90"
           >
-            Start virtual tour
+            Explore in 3D
           </Link>
           <Link
-            href="/master-plan"
+            href="/exterior"
             className="rounded-full border border-white/60 px-6 py-3 text-sm font-medium uppercase tracking-wider hover:bg-white/10"
           >
-            Master plan
+            Street views
           </Link>
         </div>
       </div>
