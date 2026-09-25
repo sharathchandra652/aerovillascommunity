@@ -101,6 +101,13 @@ const tourStops: Stop[] = [
   },
 ];
 
+type Filter = { type: string; facing: string; status: string };
+const NO_FILTER: Filter = { type: "all", facing: "all", status: "all" };
+const matchesFilter = (p: Plot, f: Filter) =>
+  (f.type === "all" || p.type === f.type) &&
+  (f.facing === "all" || p.facing === f.facing) &&
+  (f.status === "all" || p.status === f.status);
+
 const statusColor: Record<PlotStatus, string> = { available: "#2e8b57", booked: "#d99a2b", sold: "#b54a4a" };
 const statusLabel: Record<PlotStatus, string> = { available: "Available", booked: "Booked", sold: "Sold" };
 const HOME_CAMERA = new THREE.Vector3(-80, 620, 760);
@@ -233,6 +240,8 @@ export default function Community3D() {
     exitTour: () => void;
     goStop: (i: number) => void;
     setPlaying: (on: boolean) => void;
+    setFilter: (f: Filter) => void;
+    setNight: (on: boolean) => void;
   } | null>(null);
 
   const [loaded, setLoaded] = useState(false);
@@ -242,6 +251,15 @@ export default function Community3D() {
   const [selected, setSelected] = useState<Plot | null>(null);
   const [tourIndex, setTourIndex] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [night, setNight] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filter, setFilterState] = useState<Filter>(NO_FILTER);
+  const filtering = filter.type !== "all" || filter.facing !== "all" || filter.status !== "all";
+  const matchCount = plots.filter((p) => matchesFilter(p, filter)).length;
+  function updateFilter(f: Filter) {
+    setFilterState(f);
+    api.current?.setFilter(f);
+  }
 
   useEffect(() => {
     const container = mount.current!;
@@ -292,7 +310,8 @@ export default function Community3D() {
     controls.autoRotateSpeed = 0.35;
 
     // Lights
-    scene.add(new THREE.HemisphereLight("#dcecff", "#55663a", 0.9));
+    const hemi = new THREE.HemisphereLight("#dcecff", "#55663a", 0.9);
+    scene.add(hemi);
     const sunLight = new THREE.DirectionalLight("#fff1dc", 2.6);
     sunLight.position.copy(sunDir).multiplyScalar(1400);
     sunLight.castShadow = true;
@@ -303,7 +322,8 @@ export default function Community3D() {
     scene.add(sunLight);
 
     // Ground: surrounding fields + the aerial layout
-    const grass = new THREE.Mesh(track(new THREE.PlaneGeometry(14000, 14000)), track(new THREE.MeshLambertMaterial({ color: "#53592e" })));
+    const grassMat = track(new THREE.MeshLambertMaterial({ color: "#53592e" }));
+    const grass = new THREE.Mesh(track(new THREE.PlaneGeometry(14000, 14000)), grassMat);
     grass.rotation.x = -Math.PI / 2;
     grass.position.y = -0.6;
     grass.receiveShadow = true;
@@ -439,6 +459,8 @@ export default function Community3D() {
     // ---- Selection / availability
     let showAvailability = false;
     let selectedIndex = -1;
+    let filter: Filter = NO_FILTER;
+    const dim = new THREE.Color("#8a8a86");
     const gold = new THREE.Color("#ffcf66");
     const statusCol = Object.fromEntries(
       (Object.keys(statusColor) as PlotStatus[]).map((s) => [s, new THREE.Color(statusColor[s])]),
@@ -446,9 +468,15 @@ export default function Community3D() {
     const indexById = new Map(poses.map((p, i) => [p.plot.id, i]));
 
     function paint() {
+      const filtering = filter.type !== "all" || filter.facing !== "all" || filter.status !== "all";
       poses.forEach((p, i) => {
-        body.setColorAt(i, i === selectedIndex ? gold : white);
-        roofCap.setColorAt(i, i === selectedIndex ? gold : showAvailability ? statusCol[p.plot.status] : roofNeutral);
+        const match = matchesFilter(p.plot, filter);
+        const sel = i === selectedIndex;
+        body.setColorAt(i, sel ? gold : filtering && !match ? dim : white);
+        roofCap.setColorAt(
+          i,
+          sel ? gold : filtering ? (match ? gold : dim) : showAvailability ? statusCol[p.plot.status] : roofNeutral,
+        );
       });
       body.instanceColor!.needsUpdate = true;
       roofCap.instanceColor!.needsUpdate = true;
@@ -560,7 +588,32 @@ export default function Community3D() {
     renderer.domElement.addEventListener("pointerup", onUp);
     renderer.domElement.addEventListener("pointermove", onMove);
 
+    // Day / night: moonlight, dark sky, glowing windows on the facades
+    const nightBg = new THREE.Color("#0d1626");
+    function applyNight(on: boolean) {
+      sky.visible = !on;
+      scene.background = on ? nightBg : null;
+      (scene.fog as THREE.Fog).color.set(on ? "#0d1626" : "#c9d6df");
+      hemi.intensity = on ? 0.25 : 0.9;
+      hemi.color.set(on ? "#6f86b8" : "#dcecff");
+      sunLight.intensity = on ? 0.35 : 2.6;
+      sunLight.color.set(on ? "#9fb4ff" : "#fff1dc");
+      scene.environmentIntensity = on ? 0.12 : 0.45;
+      renderer.toneMappingExposure = on ? 1.1 : 0.9;
+      facadeMat.emissive.set(on ? "#ffcf8a" : "#000000");
+      facadeMat.emissiveMap = on ? facadeMat.map : null;
+      facadeMat.emissiveIntensity = on ? 0.55 : 0;
+      facadeMat.needsUpdate = true;
+      groundMat.color.set(on ? "#8a98b8" : "#ffffff");
+      grassMat.color.set(on ? "#1f2a22" : "#53592e");
+    }
+
     api.current = {
+      setFilter: (f) => {
+        filter = f;
+        paint();
+      },
+      setNight: applyNight,
       reset: () => {
         select(null);
         if (tour) exitTour();
@@ -704,6 +757,19 @@ export default function Community3D() {
             Auto-rotate
           </ToggleButton>
         )}
+        <ToggleButton
+          active={night}
+          onClick={() => {
+            const on = !night;
+            setNight(on);
+            api.current?.setNight(on);
+          }}
+        >
+          {night ? "☾ Night" : "☀ Day"}
+        </ToggleButton>
+        <ToggleButton active={filterOpen || filtering} onClick={() => setFilterOpen((o) => !o)}>
+          Find villa
+        </ToggleButton>
         <ToggleButton active={false} onClick={() => api.current?.reset()}>
           Reset view
         </ToggleButton>
@@ -717,6 +783,53 @@ export default function Community3D() {
               {statusLabel[s]}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* Villa finder */}
+      {filterOpen && (
+        <div className="absolute right-4 top-[22rem] w-64 rounded-2xl bg-neutral-950/85 p-4 text-white shadow-2xl backdrop-blur sm:right-6">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs uppercase tracking-[0.25em] text-[#d4a843]">Find your villa</p>
+            <button onClick={() => setFilterOpen(false)} aria-label="Close finder" className="text-lg leading-none">
+              ×
+            </button>
+          </div>
+          <FinderSelect label="Villa type" value={filter.type} onChange={(v) => updateFilter({ ...filter, type: v })}>
+            <option value="all">All types</option>
+            <option value="267">267 sq.yd</option>
+            <option value="567">567 sq.yd</option>
+            <option value="600">600 sq.yd</option>
+          </FinderSelect>
+          <p className="mb-1 mt-3 text-xs text-white/70">Facing</p>
+          <div className="grid grid-cols-5 gap-1">
+            {["all", "East", "West", "North", "South"].map((f) => (
+              <button
+                key={f}
+                onClick={() => updateFilter({ ...filter, facing: f })}
+                className={`rounded-md py-1.5 text-xs ${filter.facing === f ? "bg-[#d4a843] text-neutral-950" : "bg-white/10 hover:bg-white/20"}`}
+              >
+                {f === "all" ? "Any" : f[0]}
+              </button>
+            ))}
+          </div>
+          <FinderSelect label="Status" value={filter.status} onChange={(v) => updateFilter({ ...filter, status: v })}>
+            <option value="all">Any status</option>
+            <option value="available">Available</option>
+            <option value="booked">Booked</option>
+            <option value="sold">Sold</option>
+          </FinderSelect>
+          <p className="mt-3 text-sm">
+            <span className="font-semibold text-[#d4a843]">{matchCount}</span> of {plots.length} villas match
+          </p>
+          {filtering && matchCount === 0 && (
+            <p className="mt-1 text-xs text-white/60">Villa types and facings are added once the sales list arrives.</p>
+          )}
+          {filtering && (
+            <button onClick={() => updateFilter(NO_FILTER)} className="mt-2 text-xs text-white/70 underline">
+              Clear filters
+            </button>
+          )}
         </div>
       )}
 
@@ -861,6 +974,31 @@ function ToggleButton({ active, onClick, children }: { active: boolean; onClick:
     >
       {children}
     </button>
+  );
+}
+
+function FinderSelect({
+  label,
+  value,
+  onChange,
+  children,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="mt-3 block text-xs text-white/70">
+      {label}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full rounded-md border border-white/20 bg-neutral-900 px-2 py-1.5 text-sm text-white"
+      >
+        {children}
+      </select>
+    </label>
   );
 }
 
