@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: `Gallery — ${project.name}` };
 export default function GalleryPage() {
   const images = [...project.exterior, ...project.gallery];
   return (
-    <div className="mx-auto max-w-6xl space-y-10 px-4 py-10">
+    <div className="mx-auto max-w-6xl space-y-10 px-4 pb-32 pt-24">
       <h1 className="text-3xl font-semibold">Gallery</h1>
 
       <section>

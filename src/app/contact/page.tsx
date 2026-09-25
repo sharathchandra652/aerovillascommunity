@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: `Contact — ${project.name}` };
 
 export default function ContactPage() {
   return (
-    <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 lg:grid-cols-2">
+    <div className="mx-auto grid max-w-6xl gap-8 px-4 pb-32 pt-24 lg:grid-cols-2">
       <div className="space-y-4">
         <h1 className="text-3xl font-semibold">Book a site visit</h1>
         <p className="text-muted">Share your details and our team will reach out.</p>

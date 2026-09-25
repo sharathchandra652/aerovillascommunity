@@ -23,7 +23,7 @@ export default async function VillaPage(props: PageProps<"/villas/[slug]">) {
   const available = plots.filter((p) => p.type === villa.slug && p.status === "available").length;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
+    <div className="mx-auto max-w-6xl px-4 pb-32 pt-24">
       <div className="mb-6 flex flex-wrap gap-2">
         {villaTypes.map((v) => (
           <Link
@@ -78,7 +78,7 @@ export default async function VillaPage(props: PageProps<"/villas/[slug]">) {
           )}
         </div>
 
-        <aside className="space-y-4 rounded-xl border border-border bg-surface p-5 lg:sticky lg:top-20 lg:self-start">
+        <aside className="space-y-4 rounded-xl border border-border bg-surface p-5 lg:sticky lg:top-24 lg:self-start">
           <dl className="grid grid-cols-2 gap-3 text-sm">
             <div>
               <dt className="text-muted">Plot size</dt>

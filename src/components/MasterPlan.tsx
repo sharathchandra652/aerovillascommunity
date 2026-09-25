@@ -152,7 +152,7 @@ export default function MasterPlan() {
         </div>
       </div>
 
-      <aside className="rounded-xl border border-border bg-surface p-5 lg:sticky lg:top-20 lg:self-start">
+      <aside className="rounded-xl border border-border bg-surface p-5 lg:sticky lg:top-24 lg:self-start">
         {selected && selectedType ? (
           <div className="space-y-4">
             <div>
