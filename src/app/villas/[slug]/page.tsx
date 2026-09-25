@@ -20,7 +20,9 @@ export default async function VillaPage(props: PageProps<"/villas/[slug]">) {
   const villa = getVillaType(slug);
   if (!villa) notFound();
 
-  const available = plots.filter((p) => p.type === villa.slug && p.status === "available").length;
+  // Only meaningful once villas have types assigned from the sales sheet
+  const ofType = plots.filter((p) => p.type === villa.slug);
+  const available = ofType.filter((p) => p.status === "available").length;
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-32 pt-24">
@@ -38,8 +40,22 @@ export default async function VillaPage(props: PageProps<"/villas/[slug]">) {
         ))}
       </div>
 
-      <h1 className="text-3xl font-semibold">{villa.name}</h1>
-      <p className="mt-1 text-muted">{villa.tagline}</p>
+      {villa.images[0] ? (
+        <div className="relative overflow-hidden rounded-2xl">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={villa.images[0]} alt={villa.name} className="aspect-[16/9] w-full object-cover sm:aspect-[21/9]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+          <div className="absolute bottom-0 left-0 p-5 text-white sm:p-8">
+            <h1 className="text-3xl font-light uppercase tracking-[0.08em] sm:text-5xl">{villa.name}</h1>
+            <p className="mt-1 opacity-90">{villa.tagline}</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <h1 className="text-3xl font-semibold">{villa.name}</h1>
+          <p className="mt-1 text-muted">{villa.tagline}</p>
+        </>
+      )}
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-8">
@@ -104,10 +120,12 @@ export default async function VillaPage(props: PageProps<"/villas/[slug]">) {
                 <dd className="font-medium">{villa.floors}</dd>
               </div>
             )}
-            <div>
-              <dt className="text-muted">Available</dt>
-              <dd className="font-medium">{available} villas</dd>
-            </div>
+            {ofType.length > 0 && (
+              <div>
+                <dt className="text-muted">Available</dt>
+                <dd className="font-medium">{available} villas</dd>
+              </div>
+            )}
           </dl>
           <ul className="list-disc space-y-1 pl-5 text-sm">
             {villa.highlights.map((h) => (

@@ -12,6 +12,8 @@ import { MASTER_PLAN_VIEWBOX, plots, type Plot, type PlotStatus } from "@/data/p
 // (x → X, y → Z), centred on the origin.
 
 const VILLA_HEIGHT = 30;
+// Front elevation cropped from the 267 villa render, used on every villa wall
+const FACADE_IMAGE = "/media/villas/facade-267.jpg";
 const { width: W, height: H } = MASTER_PLAN_VIEWBOX;
 const toWorld = (x: number, y: number) => ({ x: x - W / 2, z: y - H / 2 });
 
@@ -37,8 +39,8 @@ const statusLabel: Record<PlotStatus, string> = { available: "Available", booked
 
 const HOME_CAMERA = new THREE.Vector3(-80, 620, 760);
 
-// One villa bay (≈40 units wide × VILLA_HEIGHT tall) drawn on a canvas and tiled
-// along the walls: three floors with glass, a grey stone panel and wood slats.
+// Fallback villa facade drawn on a canvas (three floors with glass, a grey stone
+// panel and wood slats), shown until the real facade photo has loaded.
 function makeFacadeTexture() {
   const c = document.createElement("canvas");
   c.width = 256;
@@ -81,9 +83,6 @@ function makeFacadeTexture() {
 
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  // ExtrudeGeometry side UVs are in world units: u along the wall, v up the height
-  tex.repeat.set(1 / 40, 1 / VILLA_HEIGHT);
   tex.anisotropy = 8;
   return tex;
 }
@@ -221,7 +220,19 @@ export default function Community3D() {
     function extrude(points: { x: number; z: number }[], height: number) {
       // Shape is drawn in X/Y then rotated so Y becomes -Z; negate z to keep orientation.
       const shape = new THREE.Shape(points.map((p) => new THREE.Vector2(p.x, -p.z)));
-      const geo = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
+      const geo = new THREE.ExtrudeGeometry(shape, {
+        depth: height,
+        bevelEnabled: false,
+        UVGenerator: {
+          generateTopUV: (_g, vertices, a, b, c) =>
+            [a, b, c].map((i) => new THREE.Vector2(vertices[i * 3], vertices[i * 3 + 1])),
+          // Each wall maps the full facade: u across the wall, v from ground (0) to roof (1)
+          generateSideWallUV: (_g, vertices, a, b, c, d) => {
+            const v = (i: number) => vertices[i * 3 + 2] / height;
+            return [new THREE.Vector2(0, v(a)), new THREE.Vector2(1, v(b)), new THREE.Vector2(1, v(c)), new THREE.Vector2(0, v(d))];
+          },
+        },
+      });
       geo.rotateX(-Math.PI / 2);
       return geo;
     }
@@ -244,6 +255,15 @@ export default function Community3D() {
       mesh.receiveShadow = true;
       scene.add(mesh);
     }
+
+    let facadePhoto: THREE.Texture | null = null;
+    new THREE.TextureLoader().load(FACADE_IMAGE, (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      facadePhoto = tex;
+      wallMat.map = selWall.map = tex;
+      wallMat.needsUpdate = selWall.needsUpdate = true;
+    });
 
     function refreshMaterials() {
       villaMeshes.forEach((mesh, id) => (mesh.material = materialsFor(byId.get(id)!)));
@@ -304,7 +324,7 @@ export default function Community3D() {
         const box = new THREE.Box3().setFromObject(villaMeshes.get(id)!);
         const c = box.getCenter(new THREE.Vector3());
         const dir = camera.position.clone().sub(controls.target).setY(0).normalize();
-        flyTo(c.clone().add(dir.multiplyScalar(160)).setY(170), c);
+        flyTo(c.clone().add(dir.multiplyScalar(230)).setY(105), c);
         controls.autoRotate = false;
         setAutoRotate(false);
       }
@@ -374,6 +394,7 @@ export default function Community3D() {
         if (o instanceof THREE.Mesh) o.geometry.dispose();
       });
       facade.dispose();
+      facadePhoto?.dispose();
       skyTex.dispose();
       renderer.dispose();
       renderer.domElement.remove();

@@ -56,6 +56,7 @@ export const project = {
   exterior: [
     { src: "/media/exterior/main-avenue.jpg", caption: "Main avenue — tree-lined internal road" },
     { src: "/media/master-plan.jpg", caption: "Aerial view — master layout" },
+    { src: "/media/exterior/street-view-2.jpg", caption: "Villa avenue — twin rows" },
     { src: "/media/exterior/villa-row-day.jpg", caption: "Villa row — street view" },
     { src: "/media/exterior/villa-row-evening.jpg", caption: "Villa row — evening" },
     { src: "/media/exterior/private-pool-garden.jpg", caption: "Private pool & garden deck" },
@@ -73,7 +74,7 @@ export const villaTypes: VillaType[] = [
     tagline: "Compact luxury villa",
     highlights: ["Details to be added"],
     tour: { kind: "embed", url: "https://digitour.housing.com/projects/Aasritha_Aero_Villas/sample_villa" },
-    images: [],
+    images: ["/media/villas/267/elevation-a.jpg", "/media/villas/267/elevation-b.jpg"],
     floorPlans: [],
   },
   {
