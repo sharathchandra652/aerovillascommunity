@@ -5,7 +5,9 @@ import { usePathname } from "next/navigation";
 import { project, whatsappLink } from "@/data/project";
 
 // Pages that fill the whole screen with an image; the chrome floats over them in white.
-const IMMERSIVE = ["/", "/3d", "/exterior"];
+const IMMERSIVE = ["/", "/3d"];
+// Pages with their own full-screen controls (the walkthrough player)
+const STANDALONE = ["/exterior"];
 
 const items = [
   { href: "/", label: "Home", icon: "M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z" },
@@ -19,6 +21,7 @@ const items = [
 
 export function TopBar() {
   const path = usePathname();
+  if (STANDALONE.includes(path)) return null;
   const immersive = IMMERSIVE.includes(path);
   return (
     <header
@@ -58,6 +61,7 @@ export function TopBar() {
 
 export function Dock() {
   const path = usePathname();
+  if (STANDALONE.includes(path)) return null;
   return (
     <nav className="fixed inset-x-0 bottom-3 z-40 flex justify-center px-3">
       <ul className="flex max-w-full gap-1 overflow-x-auto rounded-2xl border border-white/15 bg-neutral-900/80 p-1.5 text-white shadow-2xl backdrop-blur-md">
