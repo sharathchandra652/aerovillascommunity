@@ -15,13 +15,23 @@ export function TourViewer({ tour, title }: { tour: TourMedia; title: string }) 
   switch (tour.kind) {
     case "embed":
       return (
-        <iframe
-          src={tour.url}
-          title={title}
-          className={frame}
-          allow="fullscreen; xr-spatial-tracking; gyroscope; accelerometer"
-          allowFullScreen
-        />
+        <div>
+          <iframe
+            src={tour.url}
+            title={title}
+            className={frame}
+            allow="fullscreen; xr-spatial-tracking; gyroscope; accelerometer"
+            allowFullScreen
+          />
+          <a
+            href={tour.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-contrast"
+          >
+            Open tour full screen ↗
+          </a>
+        </div>
       );
     case "youtube":
       return (
