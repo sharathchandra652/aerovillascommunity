@@ -42,3 +42,4 @@ next-env.d.ts
 
 # offline package
 /dist
+/.next-offline/
