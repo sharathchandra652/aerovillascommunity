@@ -97,7 +97,54 @@ export const tourScenes: TourScene[] = [
     kind: "image",
     image: "/media/villas/267/elevation-b.jpg",
     map: { x: 885, y: 640 },
-    hotspots: [{ to: "villa-267", label: "Previous Villas", x: 22, y: 60 }],
+    hotspots: [
+      { to: "villa-267", label: "Previous Villas", x: 22, y: 60 },
+      { to: "villa-567-avenue", label: "567 Villas", x: 80, y: 88 },
+    ],
+  },
+  {
+    id: "villa-567-avenue",
+    title: "567 Villa Avenue",
+    kind: "image",
+    image: "/media/villas/567/avenue.jpg",
+    map: { x: 1300, y: 600 },
+    hotspots: [
+      { to: "villa-567-row", label: "567 Villa Row", x: 72, y: 50 },
+      { to: "villa-567-corner", label: "Corner Villa", x: 20, y: 45 },
+    ],
+  },
+  {
+    id: "villa-567-row",
+    title: "567 Villa Row",
+    kind: "image",
+    image: "/media/villas/567/villa-row.jpg",
+    map: { x: 1330, y: 640 },
+    hotspots: [
+      { to: "villa-567-front", label: "567 Villa Front", x: 60, y: 55 },
+      { to: "villa-567-avenue", label: "Back to Avenue", x: 22, y: 84 },
+    ],
+  },
+  {
+    id: "villa-567-corner",
+    title: "567 Villa — Corner",
+    kind: "image",
+    image: "/media/villas/567/corner.jpg",
+    map: { x: 1270, y: 560 },
+    hotspots: [
+      { to: "villa-567-front", label: "567 Villa Front", x: 45, y: 58 },
+      { to: "villa-567-avenue", label: "Back to Avenue", x: 85, y: 88 },
+    ],
+  },
+  {
+    id: "villa-567-front",
+    title: "567 Villa — Front (Evening)",
+    kind: "image",
+    image: "/media/villas/567/front-evening.jpg",
+    map: { x: 1300, y: 620 },
+    hotspots: [
+      { to: "villa-567-row", label: "567 Villa Row", x: 15, y: 60 },
+      { to: "villa-267", label: "267 Villas", x: 85, y: 60 },
+    ],
   },
   {
     id: "aerial",

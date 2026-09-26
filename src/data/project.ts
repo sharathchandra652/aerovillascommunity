@@ -60,6 +60,8 @@ export const project = {
     { src: "/media/exterior/villa-row-day.jpg", caption: "Villa row — street view" },
     { src: "/media/exterior/villa-row-evening.jpg", caption: "Villa row — evening" },
     { src: "/media/exterior/private-pool-garden.jpg", caption: "Private pool & garden deck" },
+    { src: "/media/villas/567/villa-row.jpg", caption: "567 sq.yd villas — street" },
+    { src: "/media/villas/567/avenue.jpg", caption: "567 sq.yd villa avenue" },
   ],
   gallery: [] as { src: string; caption: string }[],
   videos: [] as { title: string; youtubeId?: string; src?: string }[],
@@ -86,7 +88,12 @@ export const villaTypes: VillaType[] = [
     tagline: "Spacious 5 BHK family villa",
     highlights: ["5 BHK", "More details to be added"],
     tour: { kind: "embed", url: "https://digitour.housing.com/projects/Aasritha_Aero/5bhk_567" },
-    images: [],
+    images: [
+      "/media/villas/567/front-evening.jpg",
+      "/media/villas/567/villa-row.jpg",
+      "/media/villas/567/corner.jpg",
+      "/media/villas/567/avenue.jpg",
+    ],
     floorPlans: [],
   },
   {

@@ -96,6 +96,14 @@ const tourStops: Stop[] = [
     photo: "/media/exterior/villa-row-day.jpg",
   },
   {
+    title: "The 567 sq.yd Villas",
+    text: "Spacious 5 BHK villas with timber-lined overhangs, stone cladding and planted balconies.",
+    camera: [1300, 760, 80],
+    target: [1300, 620, 10],
+    scene: "villa-567-avenue",
+    photo: "/media/villas/567/villa-row.jpg",
+  },
+  {
     title: "Step inside the villas",
     text: "Take a 360° walk through the 267, 567 (5 BHK) and 600 sq.yd villas.",
     camera: [885, 700, 80],

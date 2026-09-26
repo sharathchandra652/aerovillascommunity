@@ -128,7 +128,7 @@ export const amenities: Amenity[] = [
     title: "Landscaped Park",
     text: "Lawns, walking trails and seating beside the clubhouse for evening strolls.",
     focus: { x: 950, y: 385, w: 260, h: 146 },
-    stop: 9,
+    stop: 10,
   },
   {
     id: "avenue",
