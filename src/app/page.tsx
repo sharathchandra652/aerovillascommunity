@@ -19,10 +19,10 @@ export default function Home() {
             ▶ Start Digi Tour
           </Link>
           <Link
-            href="/exterior"
+            href="/tour"
             className="rounded-full border border-white/60 px-6 py-3 text-sm font-medium uppercase tracking-wider hover:bg-white/10"
           >
-            Street views
+            Community Tour
           </Link>
         </div>
       </div>

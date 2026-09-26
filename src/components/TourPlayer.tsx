@@ -176,6 +176,9 @@ export default function TourPlayer() {
           ))}
         </ul>
         <div className="mt-6 space-y-2 border-t border-white/10 pt-4 text-sm">
+          <Link href="/tour" className="block rounded-lg px-2 py-2 hover:bg-white/10">
+            Community Tour →
+          </Link>
           <Link href="/3d" className="block rounded-lg px-2 py-2 hover:bg-white/10">
             3D Community View →
           </Link>

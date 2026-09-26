@@ -7,10 +7,12 @@ import { project, whatsappLink } from "@/data/project";
 // Pages that fill the whole screen with an image; the chrome floats over them in white.
 const IMMERSIVE = ["/", "/3d"];
 // Pages with their own full-screen controls (the walkthrough player)
-const STANDALONE = ["/exterior"];
+const STANDALONE = ["/exterior", "/tour"];
+const isStandalone = (path: string) => STANDALONE.some((p) => path === p || path.startsWith(p + "/"));
 
 const items = [
   { href: "/", label: "Home", icon: "M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z" },
+  { href: "/tour", label: "Tour", icon: "M4 5h6v6H4zM14 5h6v6h-6zM4 15h6v6H4zM14 15h6v6h-6z" },
   { href: "/3d", label: "3D View", short: "3D", icon: "M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5" },
   { href: "/exterior", label: "Exterior", icon: "M3 21h18M5 21V10l7-5 7 5v11M9 21v-5h6v5" },
   { href: "/master-plan", label: "Master Plan", short: "Plan", icon: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" },
@@ -21,7 +23,7 @@ const items = [
 
 export function TopBar() {
   const path = usePathname();
-  if (STANDALONE.includes(path)) return null;
+  if (isStandalone(path)) return null;
   const immersive = IMMERSIVE.includes(path);
   return (
     <header
@@ -61,7 +63,7 @@ export function TopBar() {
 
 export function Dock() {
   const path = usePathname();
-  if (STANDALONE.includes(path)) return null;
+  if (isStandalone(path)) return null;
   return (
     <nav className="fixed inset-x-0 bottom-3 z-40 flex justify-center px-3">
       <ul className="flex max-w-full gap-1 overflow-x-auto rounded-2xl border border-white/15 bg-neutral-900/80 p-1.5 text-white shadow-2xl backdrop-blur-md">

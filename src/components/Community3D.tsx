@@ -739,7 +739,18 @@ export default function Community3D() {
     ro.observe(container);
 
     // Start the tour straight away when linked with #tour
-    const autoStart = window.location.hash === "#tour" ? setTimeout(startTour, 600) : undefined;
+    // #tour starts the Digi Tour; #stop-<n> opens it paused at that stop
+    const stopMatch = window.location.hash.match(/^#stop-(\d+)$/);
+    const autoStart =
+      window.location.hash === "#tour"
+        ? setTimeout(startTour, 600)
+        : stopMatch
+          ? setTimeout(() => {
+              tour = { index: 0, playing: false, arrivedAt: null };
+              setPlaying(false);
+              goStop(Math.min(tourStops.length - 1, Number(stopMatch[1])));
+            }, 600)
+          : undefined;
 
     // ---- Render loop
     const clock = new THREE.Clock();

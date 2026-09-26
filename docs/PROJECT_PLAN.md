@@ -178,3 +178,24 @@ Assumes assets arrive on time; 1–2 developers.
 
 Once the layout and villa list arrive, development starts with the project setup
 and the interactive master plan.
+
+---
+
+## Community Tour (built)
+
+A digitour-style hub at `/tour`. A vertical rail of sections (bottom strip on
+phones) links every page; each click opens that section's page.
+
+| Section | Route | Notes |
+|---|---|---|
+| Tour home | `/tour` | Full-screen renders + a tile per section |
+| Aerial Digi Tour | `/3d#tour` | `/3d#stop-<n>` opens a specific stop |
+| Street Walkthrough | `/exterior` | Scene player with mini-map |
+| Amenities | `/tour/amenities`, `/tour/amenities/<id>` | Framed on the aerial render; "Fly there in 3D" |
+| Villas 360° | `/tour/villas`, `/tour/villas/<267\|567\|600>` | Full-screen housing.com 360° tours + switcher |
+| Master Plan | `/master-plan` | Villa selection and availability |
+| Location | `/tour/location` | Needs the site address / Google Maps pin |
+| Gallery, Book a Visit | `/gallery`, `/contact` | |
+
+Sections live in `src/data/community.ts`. Replace an amenity's aerial framing
+with a real render or 360° image when the render studio provides one.
