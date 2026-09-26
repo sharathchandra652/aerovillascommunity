@@ -8,11 +8,12 @@ import { project, whatsappLink } from "@/data/project";
 // Pages that fill the whole screen with an image; the chrome floats over them in white.
 const IMMERSIVE = ["/", "/3d"];
 // Pages with their own full-screen controls (the walkthrough player)
-const STANDALONE = ["/exterior", "/tour"];
+const STANDALONE = ["/exterior", "/tour", "/visit"];
 const isStandalone = (path: string) => STANDALONE.some((p) => path === p || path.startsWith(p + "/"));
 
 const items = [
   { href: "/", label: "Home", icon: "M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z" },
+  { href: "/visit", label: "Visit", icon: "M12 21s-7-6.5-7-12a7 7 0 0114 0c0 5.5-7 12-7 12zM12 11a2 2 0 100-4 2 2 0 000 4z" },
   { href: "/tour", label: "Tour", icon: "M4 5h6v6H4zM14 5h6v6h-6zM4 15h6v6H4zM14 15h6v6h-6z" },
   { href: "/3d", label: "3D View", short: "3D", icon: "M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5" },
   { href: "/exterior", label: "Exterior", icon: "M3 21h18M5 21V10l7-5 7 5v11M9 21v-5h6v5" },

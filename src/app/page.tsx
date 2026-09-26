@@ -17,10 +17,16 @@ export default function Home() {
         <p className="mt-4 max-w-lg text-base opacity-90 sm:text-lg">{project.tagline}</p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
-            href="/3d#tour"
+            href="/visit"
             className="rounded-full bg-[#d4a843] px-6 py-3 text-sm font-semibold uppercase tracking-wider text-neutral-950 hover:bg-[#e2b955]"
           >
-            ▶ Start Digi Tour
+            ▶ Visit Aero Villas
+          </Link>
+          <Link
+            href="/3d#tour"
+            className="rounded-full border border-white/60 px-6 py-3 text-sm font-medium uppercase tracking-wider hover:bg-white/10"
+          >
+            Digi Tour
           </Link>
           <Link
             href="/tour"

@@ -11,6 +11,14 @@ export type Vertical = {
 
 export const verticals: Vertical[] = [
   {
+    id: "visit",
+    title: "Guided Visit",
+    subtitle: "Walk through Aero Villas with a guide",
+    href: "/visit",
+    image: "/media/amenities/pergola-water-feature.jpg",
+    icon: "M9 6l9 6-9 6z",
+  },
+  {
     id: "aerial",
     title: "Aerial Digi Tour",
     subtitle: "Fly over the whole community",
