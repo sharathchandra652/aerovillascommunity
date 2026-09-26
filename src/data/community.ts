@@ -55,7 +55,7 @@ export const verticals: Vertical[] = [
     title: "Location",
     subtitle: "Neighbourhood and connectivity",
     href: "/tour/location",
-    image: "/media/exterior/villa-row-evening.jpg",
+    image: "/media/villas/600/front-evening.jpg",
     icon: "M12 21s-7-6.5-7-12a7 7 0 0114 0c0 5.5-7 12-7 12zM12 11a2 2 0 100-4 2 2 0 000 4z",
   },
   {
@@ -128,7 +128,7 @@ export const amenities: Amenity[] = [
     title: "Landscaped Park",
     text: "Lawns, walking trails and seating beside the clubhouse for evening strolls.",
     focus: { x: 950, y: 385, w: 260, h: 146 },
-    stop: 10,
+    stop: 11,
   },
   {
     id: "avenue",

@@ -143,7 +143,51 @@ export const tourScenes: TourScene[] = [
     map: { x: 1300, y: 620 },
     hotspots: [
       { to: "villa-567-row", label: "567 Villa Row", x: 15, y: 60 },
-      { to: "villa-267", label: "267 Villas", x: 85, y: 60 },
+      { to: "villa-600-row", label: "600 Villas", x: 85, y: 60 },
+    ],
+  },
+  {
+    id: "villa-600-row",
+    title: "600 Villa Row",
+    kind: "image",
+    image: "/media/villas/600/villa-row.jpg",
+    map: { x: 1480, y: 640 },
+    hotspots: [
+      { to: "villa-600-elevation", label: "600 Villa Pair", x: 45, y: 55 },
+      { to: "villa-567-front", label: "567 Villas", x: 88, y: 84 },
+    ],
+  },
+  {
+    id: "villa-600-elevation",
+    title: "600 Villa — Elevation",
+    kind: "image",
+    image: "/media/villas/600/elevation.jpg",
+    map: { x: 1500, y: 680 },
+    hotspots: [
+      { to: "villa-600-front", label: "600 Villa Front", x: 55, y: 60 },
+      { to: "villa-600-row", label: "Back to Street", x: 20, y: 84 },
+    ],
+  },
+  {
+    id: "villa-600-front",
+    title: "600 Villa — Front (Evening)",
+    kind: "image",
+    image: "/media/villas/600/front-evening.jpg",
+    map: { x: 1520, y: 700 },
+    hotspots: [
+      { to: "villa-600-pool", label: "Private Pool", x: 70, y: 55 },
+      { to: "villa-600-elevation", label: "Back", x: 22, y: 84 },
+    ],
+  },
+  {
+    id: "villa-600-pool",
+    title: "600 Villa — Private Pool",
+    kind: "image",
+    image: "/media/villas/600/private-pool.jpg",
+    map: { x: 1530, y: 715 },
+    hotspots: [
+      { to: "villa-600-front", label: "Villa Front", x: 30, y: 84 },
+      { to: "villa-267", label: "267 Villas", x: 70, y: 84 },
     ],
   },
   {

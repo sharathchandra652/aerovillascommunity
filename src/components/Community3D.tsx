@@ -104,6 +104,14 @@ const tourStops: Stop[] = [
     photo: "/media/villas/567/villa-row.jpg",
   },
   {
+    title: "The 600 sq.yd Villas",
+    text: "Signature east-facing villas with timber screens, roof gardens and a private pool deck.",
+    camera: [1500, 780, 80],
+    target: [1500, 660, 10],
+    scene: "villa-600-row",
+    photo: "/media/villas/600/villa-row.jpg",
+  },
+  {
     title: "Step inside the villas",
     text: "Take a 360° walk through the 267, 567 (5 BHK) and 600 sq.yd villas.",
     camera: [885, 700, 80],
