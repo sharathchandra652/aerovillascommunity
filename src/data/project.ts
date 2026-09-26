@@ -26,19 +26,27 @@ export type VillaType = {
 export const project = {
   name: "Aero Villas",
   tagline: "A gated villa community — explore every home from anywhere",
-  location: "Hyderabad, Telangana", // TODO: exact locality
+  location: "Shamshabad, Hyderabad",
   rera: "RERA No. — to be added",
   phone: "+91 00000 00000", // TODO
   whatsapp: "910000000000", // TODO: country code + number, digits only
   email: "sales@example.com", // TODO
-  address: "Site address — to be added",
-  mapEmbedUrl: "", // TODO: Google Maps embed URL for the site pin
+  address: "Sathamrai, Shamshabad, Hyderabad, Telangana",
+  mapEmbedUrl: "https://www.google.com/maps?q=Aasritha+Aero+Villas,+Sathamrai,+Shamshabad,+Hyderabad&output=embed",
+  mapLink: "https://maps.app.goo.gl/YxYtW9Qdu8MGfjNV9",
+  mapQuery: "Aasritha Aero Villas, Sathamrai, Shamshabad, Hyderabad",
+  // Selling points from the developer's published project details
+  connectivity: [
+    "Near Rajiv Gandhi International Airport",
+    "Easy access to the Outer Ring Road and national highways",
+    "Hyderabad city centre in under 30 minutes",
+  ],
   heroVideo: "", // e.g. "/media/hero.mp4" (drone / walkthrough video)
   heroImage: "/media/exterior/main-avenue.jpg",
   layoutImage: "/media/master-plan.jpg", // aerial render shown behind the clickable villas
   stats: [
-    { label: "Acres", value: "—" },
-    { label: "Villas", value: "—" },
+    { label: "Acres", value: "41" },
+    { label: "Villas", value: "360+" },
     { label: "Villa types", value: "3" },
     { label: "Amenities", value: "—" },
   ],

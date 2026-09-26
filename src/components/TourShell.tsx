@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Logo from "@/components/Logo";
 import { usePathname } from "next/navigation";
 import { verticals } from "@/data/community";
-import { project } from "@/data/project";
 
 // Layout for the Community Tour pages: brand panel, a vertical rail of tour
 // sections (a bottom strip on phones) and a full-screen stage.
@@ -27,10 +27,7 @@ export default function TourShell({
       <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/60 to-transparent" />
       <div className="absolute left-3 top-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-neutral-950/85 p-2.5 shadow-2xl backdrop-blur sm:left-5 sm:top-5">
         <Link href="/tour" className="flex items-center gap-2.5 pl-1">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#d4a843] text-[11px] font-semibold tracking-wider text-[#d4a843]">
-            AV
-          </span>
-          <span className="hidden font-serif text-base tracking-[0.18em] sm:block">{project.name.toUpperCase()}</span>
+          <Logo className="h-9" />
         </Link>
         <span className="h-8 w-px bg-white/20" />
         <Link

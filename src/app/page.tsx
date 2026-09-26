@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Logo from "@/components/Logo";
 import HeroSlideshow from "@/components/HeroSlideshow";
 import { project } from "@/data/project";
 
@@ -9,7 +10,10 @@ export default function Home() {
 
       <div className="max-w-2xl">
         <p className="text-xs uppercase tracking-[0.35em] opacity-80 sm:text-sm">{project.location}</p>
-        <h1 className="mt-4 text-5xl font-light uppercase tracking-[0.12em] sm:text-7xl">{project.name}</h1>
+        <h1 className="mt-4">
+          <span className="sr-only">{project.name}</span>
+          <Logo className="h-28 drop-shadow-lg sm:h-44" />
+        </h1>
         <p className="mt-4 max-w-lg text-base opacity-90 sm:text-lg">{project.tagline}</p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link

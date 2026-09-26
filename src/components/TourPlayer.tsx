@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Logo from "@/components/Logo";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
@@ -126,10 +127,7 @@ export default function TourPlayer() {
       {/* Brand panel */}
       <div className="absolute left-3 top-10 flex items-center gap-3 rounded-2xl border border-white/10 bg-neutral-950/90 p-2.5 shadow-2xl sm:left-6 sm:top-12 sm:gap-4 sm:p-3">
         <Link href="/" className="flex items-center gap-2.5 pl-1">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#d4a843] text-[11px] font-semibold tracking-wider text-[#d4a843] sm:h-11 sm:w-11 sm:text-xs">
-            AV
-          </span>
-          <span className="hidden font-serif text-lg tracking-[0.18em] sm:block">{project.name.toUpperCase()}</span>
+          <Logo className="h-9 sm:h-11" />
         </Link>
         <span className="h-9 w-px bg-white/20" />
         <IconButton label="Home" onClick={() => router.push("/")}>

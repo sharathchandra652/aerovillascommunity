@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Logo from "@/components/Logo";
 import { usePathname } from "next/navigation";
 import { project, whatsappLink } from "@/data/project";
 
@@ -31,11 +32,8 @@ export function TopBar() {
         immersive ? "text-white" : "border-b border-border bg-surface/90 text-foreground backdrop-blur"
       }`}
     >
-      <Link href="/" className="flex flex-col leading-tight">
-        <span className="text-lg font-semibold tracking-[0.2em] uppercase sm:text-xl">{project.name}</span>
-        <span className={`text-[10px] uppercase tracking-[0.3em] ${immersive ? "opacity-80" : "text-muted"}`}>
-          Virtual Experience
-        </span>
+      <Link href="/" aria-label={project.name} className={immersive ? "drop-shadow" : ""}>
+        <Logo className="h-10 sm:h-12" />
       </Link>
       <div className="flex items-center gap-2">
         <a
