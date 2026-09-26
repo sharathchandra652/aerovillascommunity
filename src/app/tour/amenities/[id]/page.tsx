@@ -26,8 +26,15 @@ export default async function AmenityPage(props: PageProps<"/tour/amenities/[id]
   return (
     <TourShell eyebrow="Amenities" title={amenity.title}>
       <div className="absolute inset-0 overflow-hidden">
-        <AerialFocus key={amenity.id} focus={amenity.focus} zoomOut={1.6} marker className="kenburns h-full w-full sm:hidden" />
-        <AerialFocus key={`${amenity.id}-wide`} focus={amenity.focus} marker className="kenburns hidden h-full w-full sm:block" />
+        {amenity.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={amenity.image} src={amenity.image} alt={amenity.title} className="kenburns h-full w-full object-cover" />
+        ) : (
+          <>
+            <AerialFocus key={amenity.id} focus={amenity.focus} zoomOut={1.6} marker className="kenburns h-full w-full sm:hidden" />
+            <AerialFocus key={`${amenity.id}-wide`} focus={amenity.focus} marker className="kenburns hidden h-full w-full sm:block" />
+          </>
+        )}
       </div>
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
 

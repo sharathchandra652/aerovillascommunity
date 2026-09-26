@@ -31,7 +31,7 @@ export const verticals: Vertical[] = [
     title: "Amenities",
     subtitle: "Clubhouse, pool, sports and parks",
     href: "/tour/amenities",
-    image: "/media/exterior/private-pool-garden.jpg",
+    image: "/media/amenities/clubhouse-pool.jpg",
     icon: "M3 18c2 0 2-1.5 4.5-1.5S9.5 18 12 18s2.5-1.5 4.5-1.5S19 18 21 18M7 15V5a2 2 0 014 0M13 15V5a2 2 0 014 0M7 8h6M7 12h6",
   },
   {
@@ -84,6 +84,7 @@ export type Amenity = {
   title: string;
   text: string;
   focus: { x: number; y: number; w: number; h: number };
+  image?: string; // real render; the aerial framing is used when there is none
   stop?: number;
   scene?: string; // exterior walkthrough scene
 };
@@ -99,34 +100,39 @@ export const amenities: Amenity[] = [
   {
     id: "clubhouse",
     title: "Clubhouse",
-    text: "The social heart of the community: lounge, indoor games and a gym overlooking the landscaped deck.",
+    text: "The social heart of the community: a glass-walled clubhouse with a gym and lounges overlooking the pool, sun deck and lawn.",
+    image: "/media/amenities/clubhouse-pool.jpg",
     focus: { x: 700, y: 370, w: 300, h: 169 },
     stop: 3,
   },
   {
     id: "pool",
     title: "Swimming Pool",
-    text: "A resort-style pool beside the clubhouse, with a sun deck and lawn for family weekends.",
+    text: "A resort-style pool with a cascading kids' pool, sun loungers and amphitheatre steps down to the lawn.",
+    image: "/media/amenities/clubhouse-pool.jpg",
     focus: { x: 800, y: 390, w: 220, h: 124 },
     stop: 3,
   },
   {
     id: "sports",
     title: "Sports Courts",
-    text: "Tennis and multi-sport courts, a short walk from every villa street.",
+    text: "Tennis, basketball and volleyball courts beside a landscaped seating plaza and walking path.",
+    image: "/media/amenities/sports-courts.jpg",
     focus: { x: 580, y: 520, w: 220, h: 124 },
     stop: 4,
   },
   {
     id: "kids",
     title: "Children's Park",
-    text: "A safe, landscaped play area for children, set away from the main traffic.",
+    text: "Slides, swings, see-saws and a trampoline in a shaded, landscaped play area away from traffic.",
+    image: "/media/amenities/kids-play.jpg",
     focus: { x: 110, y: 510, w: 240, h: 135 },
   },
   {
     id: "park",
     title: "Landscaped Park",
-    text: "Lawns, walking trails and seating beside the clubhouse for evening strolls.",
+    text: "Flower-lined walkways under timber pergolas, lamp-lit paths and lawns for evening strolls.",
+    image: "/media/amenities/pergola-walkway.jpg",
     focus: { x: 950, y: 385, w: 260, h: 146 },
     stop: 11,
   },
@@ -137,6 +143,13 @@ export const amenities: Amenity[] = [
     focus: { x: 600, y: 440, w: 700, h: 394 },
     stop: 2,
     scene: "main-avenue",
+  },
+  {
+    id: "water-feature",
+    title: "Pergola & Water Feature",
+    text: "A sculpted timber pergola framing a stone water wall, reflecting pools and flower beds.",
+    focus: { x: 950, y: 385, w: 260, h: 146 },
+    image: "/media/amenities/pergola-water-feature.jpg",
   },
 ];
 

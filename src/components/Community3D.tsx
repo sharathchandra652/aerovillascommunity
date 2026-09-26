@@ -72,12 +72,14 @@ const tourStops: Stop[] = [
     text: "The clubhouse with its swimming pool and landscaped deck, at the heart of the community.",
     camera: [690, 600, 140],
     target: [840, 445, 15],
+    photo: "/media/amenities/clubhouse-pool.jpg",
   },
   {
     title: "Sports & Play",
     text: "Sports courts and a children's play area, a short walk from every home.",
     camera: [540, 700, 95],
     target: [670, 575, 0],
+    photo: "/media/amenities/sports-courts.jpg",
   },
   {
     title: "Villa Streets",
@@ -131,6 +133,7 @@ const tourStops: Stop[] = [
     text: "Lawns and walking trails beside the clubhouse for evening strolls.",
     camera: [960, 610, 95],
     target: [1060, 450, 0],
+    photo: "/media/amenities/pergola-walkway.jpg",
   },
   {
     title: "Find your villa",

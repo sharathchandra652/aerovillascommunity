@@ -20,7 +20,12 @@ export default function AmenitiesPage() {
               className="group overflow-hidden rounded-2xl border border-white/15 bg-neutral-950/70 shadow-2xl backdrop-blur hover:border-[#d4a843]"
             >
               <div className="relative aspect-video overflow-hidden">
-                <AerialFocus focus={a.focus} marker className="h-full w-full transition-transform duration-700 group-hover:scale-110" />
+                {a.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={a.image} alt={a.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                ) : (
+                  <AerialFocus focus={a.focus} marker className="h-full w-full transition-transform duration-700 group-hover:scale-110" />
+                )}
               </div>
               <div className="p-4">
                 <h2 className="text-lg font-medium">{a.title}</h2>

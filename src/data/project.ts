@@ -73,7 +73,13 @@ export const project = {
     { src: "/media/villas/600/villa-row.jpg", caption: "600 sq.yd villas — street" },
     { src: "/media/villas/600/private-pool.jpg", caption: "600 sq.yd villa — private pool" },
   ],
-  gallery: [] as { src: string; caption: string }[],
+  gallery: [
+    { src: "/media/amenities/clubhouse-pool.jpg", caption: "Clubhouse, pool and lawn" },
+    { src: "/media/amenities/sports-courts.jpg", caption: "Sports courts and play area" },
+    { src: "/media/amenities/kids-play.jpg", caption: "Children's play area" },
+    { src: "/media/amenities/pergola-water-feature.jpg", caption: "Pergola and water feature" },
+    { src: "/media/amenities/pergola-walkway.jpg", caption: "Pergola walkway" },
+  ] as { src: string; caption: string }[],
   videos: [] as { title: string; youtubeId?: string; src?: string }[],
 };
 
