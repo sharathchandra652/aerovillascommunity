@@ -40,12 +40,12 @@ type Stop = {
   target: [number, number, number];
   scene?: string; // exterior walkthrough scene with a render of this spot
   photo?: string; // real render shown full-screen once the camera arrives
-  tour360?: string; // 360° villa tour opened from this stop
+  tours360?: boolean; // show "step inside" buttons for every villa type's 360° tour
   finale?: boolean;
 };
 
-const tour267 = villaTypes.find((v) => v.slug === "267")?.tour;
-const TOUR_267 = tour267?.kind === "embed" ? tour267.url : undefined;
+// 360° interior tours for each villa type (housing.com digitour links)
+const TOURS_360 = villaTypes.flatMap((v) => (v.tour.kind === "embed" ? [{ label: `${v.plotSize} sq.yd`, url: v.tour.url }] : []));
 const tourStops: Stop[] = [
   {
     title: `Welcome to ${project.name}`,
@@ -96,13 +96,13 @@ const tourStops: Stop[] = [
     photo: "/media/exterior/villa-row-day.jpg",
   },
   {
-    title: "The 267 sq.yd Villa",
-    text: "Step inside the 267 sq.yd villa with the 360° virtual tour.",
+    title: "Step inside the villas",
+    text: "Take a 360° walk through the 267, 567 (5 BHK) and 600 sq.yd villas.",
     camera: [885, 700, 80],
     target: [885, 600, 10],
     scene: "villa-267",
     photo: "/media/villas/267/elevation-a.jpg",
-    tour360: TOUR_267,
+    tours360: true,
   },
   {
     title: "North-East Villas",
@@ -1014,16 +1014,21 @@ export default function Community3D() {
           </div>
           <h2 className="mt-2 text-2xl font-light">{stop.title}</h2>
           <p className="mt-1 text-sm opacity-85">{stop.text}</p>
-          {stop.tour360 && (
-            <button
-              onClick={() => {
-                api.current?.setPlaying(false);
-                setPano360(stop.tour360!);
-              }}
-              className="mt-3 mr-3 rounded-full bg-[#d4a843] px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-[#e2b955]"
-            >
-              Step inside — 360° tour
-            </button>
+          {stop.tours360 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {TOURS_360.map((t) => (
+                <button
+                  key={t.url}
+                  onClick={() => {
+                    api.current?.setPlaying(false);
+                    setPano360(t.url);
+                  }}
+                  className="rounded-full bg-[#d4a843] px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-[#e2b955]"
+                >
+                  360° · {t.label}
+                </button>
+              ))}
+            </div>
           )}
           {stop.finale ? (
             <div className="mt-4 flex flex-wrap gap-2">

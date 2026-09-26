@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { project } from "@/data/project";
+import { project, villaTypes } from "@/data/project";
 import { getScene, tourScenes, type Hotspot, type TourScene } from "@/data/tour";
 
 // Full-screen exterior walkthrough: scene viewer (flat render or 360° panorama)
@@ -182,9 +182,12 @@ export default function TourPlayer() {
           <Link href="/master-plan" className="block rounded-lg px-2 py-2 hover:bg-white/10">
             Master Plan →
           </Link>
-          <Link href="/villas/267" className="block rounded-lg px-2 py-2 hover:bg-white/10">
-            Villa Tours →
-          </Link>
+          <p className="px-2 pt-2 text-xs uppercase tracking-[0.3em] text-[#d4a843]">360° Villa Tours</p>
+          {villaTypes.map((v) => (
+            <Link key={v.slug} href={`/villas/${v.slug}`} className="block rounded-lg px-2 py-2 hover:bg-white/10">
+              {v.name} →
+            </Link>
+          ))}
         </div>
       </aside>
       {menuOpen && <div className="absolute inset-0 z-10" onClick={() => setMenuOpen(false)} />}
