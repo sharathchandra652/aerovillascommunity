@@ -99,9 +99,9 @@ export const amenities: Amenity[] = [
   },
   {
     id: "clubhouse",
-    title: "Clubhouse",
-    text: "The social heart of the community: a glass-walled clubhouse with a gym and lounges overlooking the pool, sun deck and lawn.",
-    image: "/media/amenities/clubhouse-pool.jpg",
+    title: "Club Infinite",
+    text: "The clubhouse and social heart of the community: double-height glass lounges, a gym and banquet spaces opening onto the pool deck and lawn.",
+    image: "/media/amenities/club-infinite.jpg",
     focus: { x: 700, y: 370, w: 300, h: 169 },
     stop: 3,
   },

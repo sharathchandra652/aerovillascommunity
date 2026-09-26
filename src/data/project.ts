@@ -51,7 +51,7 @@ export const project = {
     { label: "Amenities", value: "—" },
   ],
   amenities: [
-    "Clubhouse",
+    "Club Infinite clubhouse",
     "Swimming pool",
     "Gym",
     "Children's play area",
@@ -72,9 +72,11 @@ export const project = {
     { src: "/media/villas/567/avenue.jpg", caption: "567 sq.yd villa avenue" },
     { src: "/media/villas/600/villa-row.jpg", caption: "600 sq.yd villas — street" },
     { src: "/media/villas/600/private-pool.jpg", caption: "600 sq.yd villa — private pool" },
+    { src: "/media/amenities/club-infinite.jpg", caption: "Club Infinite — clubhouse" },
   ],
   gallery: [
-    { src: "/media/amenities/clubhouse-pool.jpg", caption: "Clubhouse, pool and lawn" },
+    { src: "/media/amenities/club-infinite.jpg", caption: "Club Infinite — clubhouse" },
+    { src: "/media/amenities/clubhouse-pool.jpg", caption: "Clubhouse pool and lawn" },
     { src: "/media/amenities/sports-courts.jpg", caption: "Sports courts and play area" },
     { src: "/media/amenities/kids-play.jpg", caption: "Children's play area" },
     { src: "/media/amenities/pergola-water-feature.jpg", caption: "Pergola and water feature" },

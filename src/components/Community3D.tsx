@@ -24,7 +24,7 @@ const DWELL_MS = 6500;
 
 // Landmarks on the aerial render (image pixel coordinates)
 const landmarks = [
-  { label: "Clubhouse", x: 815, y: 440, h: 50 },
+  { label: "Club Infinite", x: 815, y: 440, h: 50 },
   { label: "Swimming pool", x: 885, y: 432, h: 16 },
   { label: "Sports courts", x: 670, y: 575, h: 16 },
   { label: "Children's park", x: 200, y: 565, h: 16 },
@@ -68,11 +68,11 @@ const tourStops: Stop[] = [
     photo: "/media/exterior/main-avenue.jpg",
   },
   {
-    title: "Clubhouse & Pool",
-    text: "The clubhouse with its swimming pool and landscaped deck, at the heart of the community.",
+    title: "Club Infinite & Pool",
+    text: "Club Infinite, the clubhouse, with its swimming pool and landscaped deck at the heart of the community.",
     camera: [690, 600, 140],
     target: [840, 445, 15],
-    photo: "/media/amenities/clubhouse-pool.jpg",
+    photo: "/media/amenities/club-infinite.jpg",
   },
   {
     title: "Sports & Play",
